@@ -80,7 +80,7 @@ export default function NewVenomModal({ onClose, onPostCreated }: NewVenomModalP
       setImagePreview(localUrl);
 
       // Perform background compression to lightweight optimized base64
-      const compressedBase64 = await compressImageToBase64(file, 800, 0.7);
+      const compressedBase64 = await compressImageToBase64(file, 1080, 0.85);
       setImageUrl(compressedBase64);
     } catch (e) {
       console.error('Failed to compress image', e);

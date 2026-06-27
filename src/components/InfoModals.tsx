@@ -76,15 +76,15 @@ export default function InfoModals({ type, onClose }: InfoModalsProps) {
               </p>
               <div className="space-y-3 font-mono text-[11px] text-zinc-300 bg-zinc-900/40 p-3 rounded border border-zinc-900">
                 <div className="flex gap-2">
-                  <span className="text-emerald-400 font-bold">● ZERO PASSWORD STORAGE:</span>
+                  <span className="text-emerald-400 font-bold">ZERO PASSWORD STORAGE:</span>
                   <span>Your browser generates an independent key-pair signature on boot. We do not store keys or personal identifiers.</span>
                 </div>
                 <div className="flex gap-2">
-                  <span className="text-emerald-400 font-bold">● LOCAL PREFERENCES:</span>
+                  <span className="text-emerald-400 font-bold">LOCAL PREFERENCES:</span>
                   <span>Your likes, upvotes/downvotes, and poll choices are safely compartmentalized in your local state.</span>
                 </div>
                 <div className="flex gap-2">
-                  <span className="text-emerald-400 font-bold">● CLOUD INTEGRITY:</span>
+                  <span className="text-emerald-400 font-bold">CLOUD INTEGRITY:</span>
                   <span>Media objects are optimized via compression, and payloads are stored securely under Firestore protocols.</span>
                 </div>
               </div>
@@ -108,15 +108,15 @@ export default function InfoModals({ type, onClose }: InfoModalsProps) {
               </p>
               <div className="space-y-3 font-mono text-[11px] text-zinc-300 bg-zinc-900/40 p-3 rounded border border-zinc-900">
                 <div className="flex gap-2">
-                  <span className="text-emerald-400 font-bold">💡 POLLS WITH IMAGES:</span>
+                  <span className="text-emerald-400 font-bold">POLLS WITH IMAGES:</span>
                   <span>You are not limited to just text polls! You can easily attach an image to Q&As and Polls to let users vote on visual concepts.</span>
                 </div>
                 <div className="flex gap-2">
-                  <span className="text-emerald-400 font-bold">💡 COPY PERMALINK:</span>
+                  <span className="text-emerald-400 font-bold">COPY PERMALINK:</span>
                   <span>Clicking the share button copy-pastes a direct cryptographic post anchor link (e.g., #post-ID) right to your clipboard.</span>
                 </div>
                 <div className="flex gap-2">
-                  <span className="text-emerald-400 font-bold">💡 ZERO-LOAD INTERACTION:</span>
+                  <span className="text-emerald-400 font-bold">ZERO-LOAD INTERACTION:</span>
                   <span>All upvotes, downvotes, and likes update instantly in the local state for flawless responsiveness.</span>
                 </div>
               </div>

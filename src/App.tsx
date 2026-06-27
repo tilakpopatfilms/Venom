@@ -208,17 +208,31 @@ export default function App() {
   // Admin route check
   if (currentPath === '/admin') {
     return (
-      <AdminPanel 
-        posts={posts} 
-        onNavigateHome={handleBackToHome} 
-      />
+      <motion.div
+        initial={{ opacity: 0, y: 15 }}
+        animate={{ opacity: 1, y: 0 }}
+        exit={{ opacity: 0, y: -15 }}
+        transition={{ duration: 0.22, ease: 'easeOut' }}
+        className="min-h-screen bg-zinc-950"
+      >
+        <AdminPanel 
+          posts={posts} 
+          onNavigateHome={handleBackToHome} 
+        />
+      </motion.div>
     );
   }
 
   // Render shared single post page
   if (sharedPostId) {
     return (
-      <div className="min-h-screen bg-zinc-950 font-sans text-zinc-300 antialiased flex flex-col selection:bg-emerald-500 selection:text-zinc-950">
+      <motion.div
+        initial={{ opacity: 0, y: 15 }}
+        animate={{ opacity: 1, y: 0 }}
+        exit={{ opacity: 0, y: -15 }}
+        transition={{ duration: 0.22, ease: 'easeOut' }}
+        className="min-h-screen bg-zinc-950 font-sans text-zinc-300 antialiased flex flex-col selection:bg-emerald-500 selection:text-zinc-950"
+      >
         <Header
           onNewPostClick={() => {
             window.history.pushState({}, '', '/');
@@ -283,7 +297,7 @@ export default function App() {
               <button onClick={() => setActiveInfoModal('policies')} className="hover:text-zinc-400 transition-colors">Policies</button>
               <button onClick={() => setActiveInfoModal('tips')} className="hover:text-zinc-400 transition-colors">Pro Tips</button>
             </div>
-            <span>VENOM FROM META</span>
+            <span>VENOM FROM OBSIDIAN</span>
           </div>
         </footer>
 
@@ -304,13 +318,18 @@ export default function App() {
             />
           )}
         </AnimatePresence>
-      </div>
+      </motion.div>
     );
   }
 
   // Render normal feed view
   return (
-    <div className="min-h-screen bg-zinc-950 font-sans text-zinc-300 antialiased flex flex-col selection:bg-emerald-500 selection:text-zinc-950">
+    <motion.div
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
+      transition={{ duration: 0.3, ease: 'easeOut' }}
+      className="min-h-screen bg-zinc-950 font-sans text-zinc-300 antialiased flex flex-col selection:bg-emerald-500 selection:text-zinc-950"
+    >
       
       {/* Background aesthetic grid overlay */}
       <div className="fixed inset-0 pointer-events-none opacity-[0.01] bg-[radial-gradient(#10b981_1px,transparent_1px)] [background-size:24px_24px] z-0" />
@@ -329,7 +348,7 @@ export default function App() {
       <main className="flex-1 max-w-2xl w-full mx-auto px-4 py-6 space-y-5 relative z-10">
         
         {/* Feed Filter Panel & Search */}
-        <div className="bg-zinc-900/30 border border-zinc-900 p-4 rounded-xl space-y-3.5 backdrop-blur-md">
+        <div className="relative z-30 bg-zinc-900/30 border border-zinc-900 p-4 rounded-xl space-y-3.5 backdrop-blur-md">
           
           {/* Sorting Row */}
           <div className="flex items-center justify-between border-b border-zinc-900/50 pb-2">
@@ -391,10 +410,10 @@ export default function App() {
               {showFilterDropdown && (
                 <>
                   <div 
-                    className="fixed inset-0 z-30" 
+                    className="fixed inset-0 z-40" 
                     onClick={() => setShowFilterDropdown(false)} 
                   />
-                  <div className="absolute right-0 mt-2 w-44 bg-zinc-950 border border-zinc-900 rounded-md shadow-2xl z-40 py-1 text-xs font-mono">
+                  <div className="absolute right-0 mt-2 w-44 bg-zinc-950 border border-zinc-900 rounded-md shadow-2xl z-50 py-1 text-xs font-mono">
                     {[
                       { id: 'all', label: 'All Channels' },
                       { id: 'general', label: '#general' },
@@ -519,10 +538,10 @@ export default function App() {
             <button onClick={() => setActiveInfoModal('policies')} className="hover:text-zinc-400 transition-colors cursor-pointer">Policies</button>
             <button onClick={() => setActiveInfoModal('tips')} className="hover:text-zinc-400 transition-colors cursor-pointer">Pro Tips</button>
           </div>
-          <span>VENOM FROM META</span>
+          <span>VENOM FROM OBSIDIAN</span>
         </div>
       </footer>
 
-    </div>
+    </motion.div>
   );
 }

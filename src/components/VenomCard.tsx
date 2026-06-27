@@ -46,6 +46,10 @@ export default function VenomCard({ post, onPostUpdate }: VenomCardProps) {
   const [isCopiedShare, setIsCopiedShare] = useState(false);
   const [commentsCount, setCommentsCount] = useState(post.commentsCount);
 
+  React.useEffect(() => {
+    setCommentsCount(post.commentsCount);
+  }, [post.commentsCount]);
+
   // Read interaction states from LocalStorage via storage helpers
   const liked = isPostLiked(post.id);
   const userVote = getPostVote(post.id); // 'up', 'down', or null

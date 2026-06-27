@@ -5,9 +5,9 @@
 
 /**
  * Compresses an image file and converts it into a web-optimized Base64 WebP/JPEG string
- * of minimal file size (less than 150KB) to ensure extreme loading speed and fits in Firestore.
+ * of professional high sharpness to ensure extreme loading speed and fit in Firestore.
  */
-export function compressImageToBase64(file: File, maxDimension: number = 800, quality: number = 0.7): Promise<string> {
+export function compressImageToBase64(file: File, maxDimension: number = 1080, quality: number = 0.85): Promise<string> {
   return new Promise((resolve, reject) => {
     const reader = new FileReader();
     reader.readAsDataURL(file);
