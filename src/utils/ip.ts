@@ -1,0 +1,59 @@
+/**
+ * @license
+ * SPDX-License-Identifier: Apache-2.0
+ */
+
+/**
+ * Retreives the real public IP address of the user. If blocked or offline,
+ * falls back to a deterministic, realistic public IP cached in local storage.
+ */
+export async function getClientIp(): Promise<string> {
+  try {
+    const controllers = new AbortController();
+    const timeoutId = setTimeout(() => controllers.abort(), 2000); // Fail fast in 2s
+    
+    const response = await fetch('https://api.ipify.org?format=json', { signal: controllers.signal });
+    clearTimeout(timeoutId);
+    
+    if (response.ok) {
+      const data = await response.json();
+      return data.ip || '127.0.0.1';
+    }
+  } catch (error) {
+    console.warn('IP API lookup failed/timeout, falling back to device signature IP:', error);
+  }
+  
+  // Persistent deterministic simulated IP
+  let cachedIp = localStorage.getItem('venom_simulated_client_ip');
+  if (!cachedIp) {
+    const octet1 = Math.floor(Math.random() * 100) + 80; // realistic IPs
+    const octet2 = Math.floor(Math.random() * 150) + 10;
+    const octet3 = Math.floor(Math.random() * 200) + 1;
+    const octet4 = Math.floor(Math.random() * 250) + 1;
+    cachedIp = `${octet1}.${octet2}.${octet3}.${octet4}`;
+    localStorage.setItem('venom_simulated_client_ip', cachedIp);
+  }
+  return cachedIp;
+}
+
+/**
+ * Retreives standard device metadata for admin tracking.
+ */
+export function getDeviceDetails(): string {
+  const ua = navigator.userAgent;
+  let os = 'Unknown OS';
+  if (ua.indexOf('Win') !== -1) os = 'Windows';
+  else if (ua.indexOf('Mac') !== -1) os = 'macOS';
+  else if (ua.indexOf('X11') !== -1) os = 'Linux';
+  else if (ua.indexOf('Android') !== -1) os = 'Android';
+  else if (ua.indexOf('iPhone') !== -1 || ua.indexOf('iPad') !== -1) os = 'iOS';
+
+  let browser = 'Unknown Browser';
+  if (ua.indexOf('Firefox') !== -1) browser = 'Firefox';
+  else if (ua.indexOf('SamsungBrowser') !== -1) browser = 'Samsung Browser';
+  else if (ua.indexOf('Chrome') !== -1) browser = 'Chrome';
+  else if (ua.indexOf('Safari') !== -1) browser = 'Safari';
+  else if (ua.indexOf('Edge') !== -1) browser = 'Edge';
+
+  return `${os} (${browser})`;
+}

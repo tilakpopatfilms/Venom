@@ -1,0 +1,65 @@
+{
+  "entities": {
+    "Post": {
+      "title": "Post",
+      "description": "A venom post containing text, image, poll, or Q&A content.",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "type": { "type": "string", "enum": ["text", "image", "poll", "qa"] },
+        "title": { "type": "string" },
+        "content": { "type": "string" },
+        "imageUrl": { "type": "string" },
+        "pollOptions": { "type": "array" },
+        "pollVotes": { "type": "object" },
+        "likesCount": { "type": "integer" },
+        "upvotesCount": { "type": "integer" },
+        "downvotesCount": { "type": "integer" },
+        "commentsCount": { "type": "integer" },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "encryptedHash": { "type": "string" },
+        "category": { "type": "string" }
+      },
+      "required": ["id", "type", "title", "content", "likesCount", "upvotesCount", "downvotesCount", "commentsCount", "createdAt", "encryptedHash"]
+    },
+    "Comment": {
+      "title": "Comment",
+      "description": "A comment on a post.",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "content": { "type": "string" },
+        "likesCount": { "type": "integer" },
+        "repliesCount": { "type": "integer" },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["id", "content", "likesCount", "repliesCount", "createdAt"]
+    },
+    "Reply": {
+      "title": "Reply",
+      "description": "A reply to a comment.",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "content": { "type": "string" },
+        "likesCount": { "type": "integer" },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["id", "content", "likesCount", "createdAt"]
+    }
+  },
+  "firestore": {
+    "/posts/{postId}": {
+      "schema": "Post",
+      "description": "Top-level collection for all posts."
+    },
+    "/posts/{postId}/comments/{commentId}": {
+      "schema": "Comment",
+      "description": "Comments belonging to a specific post."
+    },
+    "/posts/{postId}/comments/{commentId}/replies/{replyId}": {
+      "schema": "Reply",
+      "description": "Replies belonging to a specific comment."
+    }
+  }
+}

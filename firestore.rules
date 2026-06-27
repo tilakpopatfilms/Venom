@@ -1,0 +1,24 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // Allows full read/write on posts, which are required for both user-voted updates and administrator controls
+    match /posts/{postId} {
+      allow read, write: if true;
+
+      // Allows full read/write on comments for thread expansion
+      match /comments/{commentId} {
+        allow read, write: if true;
+
+        // Allows full read/write on nested comment replies
+        match /replies/{replyId} {
+          allow read, write: if true;
+        }
+      }
+    }
+
+    // Allows reading and managing blocked IP lists to prevent spam
+    match /blockedIps/{ip} {
+      allow read, write: if true;
+    }
+  }
+}
