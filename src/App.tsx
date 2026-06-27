@@ -35,7 +35,8 @@ import {
   SlidersHorizontal,
   Check,
   ArrowLeft,
-  ShieldAlert
+  ShieldAlert,
+  RefreshCw
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { getOperativeID } from './utils/crypto';
@@ -60,6 +61,24 @@ export default function App() {
   // Parse path for single post sharing
   const postMatch = currentPath.match(/^\/post\/([a-zA-Z0-9_-]+)/) || currentPath.match(/^\/venom\/([a-zA-Z0-9_-]+)/);
   const sharedPostId = postMatch ? postMatch[1] : null;
+
+  // Redirect and prefill search if hitting a shared post URL
+  useEffect(() => {
+    if (sharedPostId) {
+      setSearchTerm(sharedPostId);
+      window.history.replaceState({}, '', '/');
+      setCurrentPath('/');
+    }
+  }, [sharedPostId]);
+
+  // Redirect to admin panel if the user enters '/admin' into the search input
+  useEffect(() => {
+    if (searchTerm.trim() === '/admin') {
+      setSearchTerm('');
+      window.history.pushState({}, '', '/admin');
+      window.dispatchEvent(new PopStateEvent('popstate'));
+    }
+  }, [searchTerm]);
 
   // Load operative local metadata & listen to location routes
   useEffect(() => {
@@ -502,21 +521,36 @@ export default function App() {
 
         {/* Active filter summary (if active) */}
         {(searchTerm || activeCategory !== 'all') && (
-          <div className="text-[10px] font-mono text-zinc-500 flex items-center gap-2 px-1 justify-center">
-            <span>ACTIVE FILTER:</span>
-            <span className="text-zinc-400 font-bold uppercase bg-zinc-900 px-1.5 py-0.5 rounded border border-zinc-800">
-              {activeCategory === 'all' ? 'ALL CHANNELS' : `#${activeCategory}`}
-            </span>
-            {searchTerm && (
-              <>
-                <span className="text-zinc-700">/</span>
-                <span className="text-zinc-400 font-bold bg-zinc-900 px-1.5 py-0.5 rounded border border-zinc-800">
-                  "{searchTerm}"
-                </span>
-              </>
-            )}
-            <span className="text-zinc-700">|</span>
-            <span className="text-emerald-500 font-bold">{filteredPosts.length} posts found</span>
+          <div className="flex flex-col items-center gap-3">
+            <div className="text-[10px] font-mono text-zinc-500 flex items-center gap-2 px-1 justify-center flex-wrap">
+              <span>ACTIVE FILTER:</span>
+              <span className="text-zinc-400 font-bold uppercase bg-zinc-900 px-1.5 py-0.5 rounded border border-zinc-800">
+                {activeCategory === 'all' ? 'ALL CHANNELS' : `#${activeCategory}`}
+              </span>
+              {searchTerm && (
+                <>
+                  <span className="text-zinc-700 font-bold">/</span>
+                  <span className="text-zinc-400 font-bold bg-zinc-900 px-1.5 py-0.5 rounded border border-zinc-800">
+                    "{searchTerm}"
+                  </span>
+                </>
+              )}
+              <span className="text-zinc-700">|</span>
+              <span className="text-emerald-500 font-bold">{filteredPosts.length} posts found</span>
+            </div>
+            
+            <button
+              onClick={() => {
+                setSearchTerm('');
+                setActiveCategory('all');
+                window.history.pushState({}, '', '/');
+                window.dispatchEvent(new PopStateEvent('popstate'));
+              }}
+              className="flex items-center gap-2 text-[10px] font-bold uppercase tracking-wider font-mono text-emerald-400 hover:text-emerald-300 transition-colors border border-emerald-500/20 bg-emerald-500/5 hover:bg-emerald-500/10 px-4 py-1.5 rounded-md shadow-lg shadow-emerald-950/20 cursor-pointer"
+            >
+              <RefreshCw className="w-3 h-3 animate-pulse text-emerald-400" />
+              <span>Go to Homescreen (Latest Venoms)</span>
+            </button>
           </div>
         )}
 
