@@ -25,13 +25,13 @@ export function generatePostHash(): string {
  */
 export function getOperativeID(): string {
   const localKey = 'venom_anon_op_id';
-  let existing = localStorage.getItem(localKey);
+  let existing = sessionStorage.getItem(localKey);
   if (!existing) {
     const prefixes = ['NEXUS', 'GHOST', 'PHANTOM', 'SPECTRE', 'COBALT', 'SHADOW', 'NEON', 'CIPHER', 'VECTOR', 'VOID'];
     const prefix = prefixes[Math.floor(Math.random() * prefixes.length)];
     const randomHex = Math.floor(1000 + Math.random() * 9000).toString(16).toUpperCase();
     existing = `${prefix}-${randomHex}`;
-    localStorage.setItem(localKey, existing);
+    sessionStorage.setItem(localKey, existing);
   }
   return existing;
 }
