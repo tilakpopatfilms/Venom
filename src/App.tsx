@@ -62,21 +62,22 @@ export default function App() {
   const postMatch = currentPath.match(/^\/post\/([a-zA-Z0-9_-]+)/) || currentPath.match(/^\/venom\/([a-zA-Z0-9_-]+)/);
   const sharedPostId = postMatch ? postMatch[1] : null;
 
-  // Redirect and prefill search if hitting a shared post URL
-  useEffect(() => {
-    if (sharedPostId) {
-      setSearchTerm(sharedPostId);
-      window.history.replaceState({}, '', '/');
-      setCurrentPath('/');
-    }
-  }, [sharedPostId]);
+  // Direct navigation functions that synchronously sync browser history and React state
+  const handleNavigateAdmin = () => {
+    window.history.pushState({}, '', '/admin');
+    setCurrentPath('/admin');
+  };
+
+  const handleBackToHome = () => {
+    window.history.pushState({}, '', '/');
+    setCurrentPath('/');
+  };
 
   // Redirect to admin panel if the user enters '/admin' into the search input
   useEffect(() => {
     if (searchTerm.trim() === '/admin') {
       setSearchTerm('');
-      window.history.pushState({}, '', '/admin');
-      window.dispatchEvent(new PopStateEvent('popstate'));
+      handleNavigateAdmin();
     }
   }, [searchTerm]);
 
@@ -226,11 +227,6 @@ export default function App() {
     }
   };
 
-  const handleBackToHome = () => {
-    window.history.pushState({}, '', '/');
-    window.dispatchEvent(new PopStateEvent('popstate'));
-  };
-
   const handleRefresh = () => {
     setIsRefreshing(true);
     setTimeout(() => setIsRefreshing(false), 600);
@@ -311,7 +307,7 @@ export default function App() {
         <Header
           onNewPostClick={() => {
             window.history.pushState({}, '', '/');
-            window.dispatchEvent(new PopStateEvent('popstate'));
+            setCurrentPath('/');
             setTimeout(() => setShowNewPostModal(true), 100);
           }}
           onRefresh={handleRefresh}
@@ -319,6 +315,7 @@ export default function App() {
           onShowGuidelines={() => setActiveInfoModal('guidelines')}
           onShowPolicies={() => setActiveInfoModal('policies')}
           onShowTips={() => setActiveInfoModal('tips')}
+          onNavigateAdmin={handleNavigateAdmin}
         />
 
         <main className="flex-1 max-w-2xl w-full mx-auto px-4 py-8 space-y-6 relative z-10">
@@ -368,9 +365,11 @@ export default function App() {
         <footer className="mt-auto border-t border-zinc-900/40 py-6 px-4 bg-zinc-950 text-center text-[10px] text-zinc-600 font-mono">
           <div className="max-w-2xl mx-auto flex flex-col sm:flex-row items-center justify-between gap-3 text-zinc-600">
             <div className="flex flex-wrap items-center gap-x-4 gap-y-2 justify-center">
-              <button onClick={() => setActiveInfoModal('guidelines')} className="hover:text-zinc-400 transition-colors">Guidelines</button>
-              <button onClick={() => setActiveInfoModal('policies')} className="hover:text-zinc-400 transition-colors">Policies</button>
-              <button onClick={() => setActiveInfoModal('tips')} className="hover:text-zinc-400 transition-colors">Pro Tips</button>
+              <button onClick={() => setActiveInfoModal('guidelines')} className="hover:text-zinc-400 transition-colors cursor-pointer">Guidelines</button>
+              <button onClick={() => setActiveInfoModal('policies')} className="hover:text-zinc-400 transition-colors cursor-pointer">Policies</button>
+              <button onClick={() => setActiveInfoModal('tips')} className="hover:text-zinc-400 transition-colors cursor-pointer">Pro Tips</button>
+              <span className="text-zinc-800">|</span>
+              <button onClick={handleNavigateAdmin} className="text-emerald-500 hover:text-emerald-400 transition-colors font-bold cursor-pointer">Admin Panel</button>
             </div>
             <span>VENOM FROM OBSIDIAN</span>
           </div>
@@ -417,6 +416,7 @@ export default function App() {
         onShowGuidelines={() => setActiveInfoModal('guidelines')}
         onShowPolicies={() => setActiveInfoModal('policies')}
         onShowTips={() => setActiveInfoModal('tips')}
+        onNavigateAdmin={handleNavigateAdmin}
       />
 
       {/* Centered Instagram-style Feed Layout */}
@@ -543,8 +543,7 @@ export default function App() {
               onClick={() => {
                 setSearchTerm('');
                 setActiveCategory('all');
-                window.history.pushState({}, '', '/');
-                window.dispatchEvent(new PopStateEvent('popstate'));
+                handleBackToHome();
               }}
               className="flex items-center gap-2 text-[10px] font-bold uppercase tracking-wider font-mono text-emerald-400 hover:text-emerald-300 transition-colors border border-emerald-500/20 bg-emerald-500/5 hover:bg-emerald-500/10 px-4 py-1.5 rounded-md shadow-lg shadow-emerald-950/20 cursor-pointer"
             >
@@ -627,6 +626,8 @@ export default function App() {
             <button onClick={() => setActiveInfoModal('guidelines')} className="hover:text-zinc-400 transition-colors cursor-pointer">Guidelines</button>
             <button onClick={() => setActiveInfoModal('policies')} className="hover:text-zinc-400 transition-colors cursor-pointer">Policies</button>
             <button onClick={() => setActiveInfoModal('tips')} className="hover:text-zinc-400 transition-colors cursor-pointer">Pro Tips</button>
+            <span className="text-zinc-800">|</span>
+            <button onClick={handleNavigateAdmin} className="text-emerald-500 hover:text-emerald-400 transition-colors font-bold cursor-pointer">Admin Panel</button>
           </div>
           <span>VENOM FROM OBSIDIAN</span>
         </div>
