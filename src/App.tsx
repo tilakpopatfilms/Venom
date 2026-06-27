@@ -11,10 +11,13 @@ import {
   limit, 
   onSnapshot,
   doc,
-  getDoc
+  getDoc,
+  where,
+  getDocs
 } from 'firebase/firestore';
 import { db, handleFirestoreError, OperationType } from './firebase';
 import { Post } from './types';
+import { getClientIp } from './utils/ip';
 import Header from './components/Header';
 import VenomCard from './components/VenomCard';
 import NewVenomModal from './components/NewVenomModal';
@@ -102,6 +105,59 @@ export default function App() {
 
     return () => unsubscribe();
   }, []);
+
+  // Load and synchronize IP-based interactions on boot to lock votes and likes securely on device-level
+  useEffect(() => {
+    const syncInteractions = async () => {
+      if (!db) return;
+      try {
+        const userIp = await getClientIp();
+        const q = query(collection(db, 'interactions'), where('ip', '==', userIp));
+        const snap = await getDocs(q);
+        
+        const likedPosts: string[] = [];
+        const votedPosts: { [postId: string]: 'up' | 'down' } = {};
+        const votedPolls: { [postId: string]: number } = {};
+        
+        snap.forEach((docSnap) => {
+          const data = docSnap.data();
+          const pId = data.postId;
+          if (data.type === 'like') {
+            likedPosts.push(pId);
+          } else if (data.type === 'vote') {
+            votedPosts[pId] = data.direction;
+          } else if (data.type === 'poll') {
+            votedPolls[pId] = data.optionIndex;
+          }
+        });
+        
+        const existing = localStorage.getItem('venom_user_interactions');
+        let parsed: any = { likedComments: [], likedReplies: [] };
+        if (existing) {
+          try {
+            parsed = JSON.parse(existing);
+          } catch (e) {}
+        }
+        
+        localStorage.setItem('venom_user_interactions', JSON.stringify({
+          likedPosts,
+          votedPosts,
+          votedPolls,
+          likedComments: parsed.likedComments || [],
+          likedReplies: parsed.likedReplies || [],
+        }));
+        
+        // Dispatch storage event to notify components of synchronized state
+        window.dispatchEvent(new Event('storage'));
+      } catch (err) {
+        console.error('Failed to sync device-level interactions:', err);
+      }
+    };
+    
+    if (dbConnected) {
+      syncInteractions();
+    }
+  }, [dbConnected]);
 
   // Fetch shared post if active
   useEffect(() => {

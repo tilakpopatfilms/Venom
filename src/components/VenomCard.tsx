@@ -29,7 +29,8 @@ import {
   setPollVotedOptionStore 
 } from '../utils/storage';
 import { db, handleFirestoreError, OperationType } from '../firebase';
-import { doc, updateDoc, increment } from 'firebase/firestore';
+import { doc, updateDoc, increment, setDoc, deleteDoc } from 'firebase/firestore';
+import { getClientIp } from '../utils/ip';
 import { formatTimeAgo } from '../utils/time';
 import CommentsPane from './CommentsPane';
 
@@ -70,7 +71,21 @@ export default function VenomCard({ post, onPostUpdate }: VenomCardProps) {
     }
 
     try {
+      const userIp = await getClientIp();
+      const interactionRef = doc(db, 'interactions', `${post.id}_${userIp}_like`);
       const postRef = doc(db, 'posts', post.id);
+
+      if (isLikedNow) {
+        await setDoc(interactionRef, {
+          ip: userIp,
+          postId: post.id,
+          type: 'like',
+          createdAt: new Date().toISOString()
+        });
+      } else {
+        await deleteDoc(interactionRef);
+      }
+
       await updateDoc(postRef, {
         likesCount: increment(incAmount),
       });
@@ -114,7 +129,24 @@ export default function VenomCard({ post, onPostUpdate }: VenomCardProps) {
     }
 
     try {
+      const userIp = await getClientIp();
+      const interactionRef = doc(db, 'interactions', `${post.id}_${userIp}_vote`);
       const postRef = doc(db, 'posts', post.id);
+
+      if (userVote === direction) {
+        // Vote was cancelled
+        await deleteDoc(interactionRef);
+      } else {
+        // Set new/switched vote
+        await setDoc(interactionRef, {
+          ip: userIp,
+          postId: post.id,
+          type: 'vote',
+          direction,
+          createdAt: new Date().toISOString()
+        });
+      }
+
       const updateData: { [key: string]: any } = {};
       if (upvoteInc !== 0) updateData.upvotesCount = increment(upvoteInc);
       if (downvoteInc !== 0) updateData.downvotesCount = increment(downvoteInc);
@@ -146,7 +178,18 @@ export default function VenomCard({ post, onPostUpdate }: VenomCardProps) {
     }
 
     try {
+      const userIp = await getClientIp();
+      const interactionRef = doc(db, 'interactions', `${post.id}_${userIp}_poll`);
       const postRef = doc(db, 'posts', post.id);
+
+      await setDoc(interactionRef, {
+        ip: userIp,
+        postId: post.id,
+        type: 'poll',
+        optionIndex,
+        createdAt: new Date().toISOString()
+      });
+
       const voteKey = `pollVotes.${optionIndex}`;
       await updateDoc(postRef, {
         [voteKey]: increment(1),

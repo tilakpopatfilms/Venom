@@ -20,5 +20,10 @@ service cloud.firestore {
     match /blockedIps/{ip} {
       allow read, write: if true;
     }
+
+    // Allows tracking and locking device-level likes and votes securely
+    match /interactions/{interactionId} {
+      allow read, write: if true;
+    }
   }
 }

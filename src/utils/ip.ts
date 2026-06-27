@@ -12,7 +12,7 @@ export async function getClientIp(): Promise<string> {
     const controllers = new AbortController();
     const timeoutId = setTimeout(() => controllers.abort(), 2000); // Fail fast in 2s
     
-    const response = await fetch('https://api.ipify.org?format=json', { signal: controllers.signal });
+    const response = await fetch('/api/get-ip', { signal: controllers.signal });
     clearTimeout(timeoutId);
     
     if (response.ok) {

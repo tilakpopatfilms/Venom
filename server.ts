@@ -16,6 +16,24 @@ async function startServer() {
     res.json({ status: 'ok', timestamp: new Date().toISOString() });
   });
 
+  // Get IP endpoint to resolve real device public IP behind proxies
+  app.get('/api/get-ip', (req, res) => {
+    const xForwardedFor = req.headers['x-forwarded-for'];
+    let ip = '';
+    if (typeof xForwardedFor === 'string') {
+      ip = xForwardedFor.split(',')[0].trim();
+    } else if (Array.isArray(xForwardedFor)) {
+      ip = xForwardedFor[0].trim();
+    } else {
+      ip = req.socket.remoteAddress || '';
+    }
+    // Convert IPv6 loopback to readable local IP
+    if (ip === '::1' || ip === '::ffff:127.0.0.1') {
+      ip = '127.0.0.1';
+    }
+    res.json({ ip });
+  });
+
   // Handle static assets and SPA fallback
   if (process.env.NODE_ENV !== 'production') {
     const vite = await createViteServer({

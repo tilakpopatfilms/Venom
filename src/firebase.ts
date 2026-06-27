@@ -4,7 +4,7 @@
  */
 
 import { initializeApp } from 'firebase/app';
-import { getFirestore, doc, getDocFromServer } from 'firebase/firestore';
+import { initializeFirestore, doc, getDocFromServer } from 'firebase/firestore';
 import { getAuth, signInAnonymously } from 'firebase/auth';
 import firebaseConfig from '../firebase-applet-config.json';
 
@@ -14,7 +14,9 @@ let auth: any;
 
 try {
   app = initializeApp(firebaseConfig);
-  db = getFirestore(app, firebaseConfig.firestoreDatabaseId);
+  db = initializeFirestore(app, {
+    ignoreUndefinedProperties: true
+  }, firebaseConfig.firestoreDatabaseId);
   auth = getAuth(app);
 } catch (error) {
   console.error("Failed to initialize Firebase", error);

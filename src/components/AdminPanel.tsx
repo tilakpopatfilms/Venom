@@ -63,32 +63,22 @@ export default function AdminPanel({ posts, onNavigateHome }: AdminPanelProps) {
   const [editTitle, setEditTitle] = useState('');
   const [editContent, setEditContent] = useState('');
   const [editCategory, setEditCategory] = useState('');
-  const [editLikes, setEditLikes] = useState(0);
-  const [editUpvotes, setEditUpvotes] = useState(0);
-  const [editDownvotes, setEditDownvotes] = useState(0);
+  const [editLikes, setEditLikes] = useState<string | number>(0);
+  const [editUpvotes, setEditUpvotes] = useState<string | number>(0);
+  const [editDownvotes, setEditDownvotes] = useState<string | number>(0);
   const [isSavingPost, setIsSavingPost] = useState(false);
 
   // Search/Filter state for admin console
   const [adminSearchTerm, setAdminSearchTerm] = useState('');
 
+  // Real observer count based on actual unique IP addresses that have ever posted + current observer
+  const uniqueIps = Array.from(new Set(posts.map(p => p.postedFromIp).filter(Boolean)));
+  const liveObservers = Math.max(1, uniqueIps.length);
+
   // Analytics Dashboard States
-  const [liveObservers, setLiveObservers] = useState(142);
   const [hoveredDataIndex, setHoveredDataIndex] = useState<number | null>(null);
   const [hoveredNode, setHoveredNode] = useState<{ label: string; category: string; description: string } | null>(null);
   const [graphTime, setGraphTime] = useState(0);
-
-  // Live observers oscillation
-  useEffect(() => {
-    if (!isAuthenticated) return;
-    const interval = setInterval(() => {
-      setLiveObservers(prev => {
-        const delta = Math.floor(Math.random() * 9) - 4; // -4 to +4
-        const next = prev + delta;
-        return next < 90 ? 120 : next > 280 ? 170 : next;
-      });
-    }, 2500);
-    return () => clearInterval(interval);
-  }, [isAuthenticated]);
 
   // Obsidian Force-Graph Animation loop
   useEffect(() => {
@@ -233,6 +223,15 @@ export default function AdminPanel({ posts, onNavigateHome }: AdminPanelProps) {
   
   const totalImagesCount = posts.filter(p => p.type === 'image' || p.imageUrl).length;
   
+  // Real average interactions computation
+  const totalLikes = posts.reduce((acc, p) => acc + (p.likesCount || 0), 0);
+  const totalComments = posts.reduce((acc, p) => acc + (p.commentsCount || 0), 0);
+  const totalUpvotes = posts.reduce((acc, p) => acc + (p.upvotesCount || 0), 0);
+  const totalInteractions = totalLikes + totalComments + totalUpvotes;
+  const averageEngagement = posts.length > 0 
+    ? (totalInteractions / posts.length).toFixed(1)
+    : '0.0';
+
   // Calculate simulated storage footprint based on base64 and string payloads
   const calculatedStorageInKB = posts.reduce((acc, p) => {
     let payloadSize = (p.title?.length || 0) + (p.content?.length || 0);
@@ -396,20 +395,18 @@ export default function AdminPanel({ posts, onNavigateHome }: AdminPanelProps) {
                   <span className="w-2.5 h-2.5 bg-emerald-500 rounded-full animate-pulse inline-block" />
                   {liveObservers}
                 </span>
-                <span className="text-[9px] text-zinc-500 mt-1.5 block">Simulated active nodes online</span>
+                <span className="text-[9px] text-zinc-500 mt-1.5 block">Unique poster IPs connected</span>
               </div>
 
               <div className="bg-zinc-900/30 border border-zinc-900 rounded-lg p-4 backdrop-blur-sm relative overflow-hidden">
                 <div className="absolute top-2 right-2 text-emerald-500/10">
                   <Cpu className="w-12 h-12 text-emerald-500/10" />
                 </div>
-                <span className="text-[9px] uppercase text-zinc-500 block font-bold">VENOMS PRODUCTIVITY</span>
+                <span className="text-[9px] uppercase text-zinc-500 block font-bold">AVG ENGAGEMENT RATIO</span>
                 <span className="text-2xl font-black text-zinc-200 mt-1 block tracking-tight">
-                  {posts.length > 0 
-                    ? Math.max(35, Math.min(99.4, Math.round(((posts.reduce((acc, p) => acc + (p.likesCount || 0), 0) * 1.2 + posts.reduce((acc, p) => acc + (p.commentsCount || 0), 0) * 2.1) / posts.length) * 10))) 
-                    : 35}%
+                  {averageEngagement}
                 </span>
-                <span className="text-[9px] text-zinc-500 mt-1.5 block">Engagement efficiency ratio</span>
+                <span className="text-[9px] text-zinc-500 mt-1.5 block">Interactions per Venom</span>
               </div>
 
               <div className="bg-zinc-900/30 border border-zinc-900 rounded-lg p-4 backdrop-blur-sm relative overflow-hidden">
@@ -605,15 +602,34 @@ export default function AdminPanel({ posts, onNavigateHome }: AdminPanelProps) {
                 <div className="relative flex-1 flex items-center justify-center my-3 min-h-[200px]">
                   {(() => {
                     // Compute chart parameters dynamically based on actual Firestore posts count
-                    const scaleFactor = Math.max(1, posts.length / 8);
-                    const linePoints = [
-                      { hour: '02:00', value: Math.round(4 * scaleFactor), engagement: Math.round(28 * scaleFactor), active: 104 },
-                      { hour: '06:00', value: Math.round(11 * scaleFactor), engagement: Math.round(72 * scaleFactor), active: 118 },
-                      { hour: '10:00', value: Math.round(26 * scaleFactor), engagement: Math.round(195 * scaleFactor), active: 151 },
-                      { hour: '14:00', value: Math.round(39 * scaleFactor), engagement: Math.round(348 * scaleFactor), active: 196 },
-                      { hour: '18:00', value: Math.round(22 * scaleFactor), engagement: Math.round(240 * scaleFactor), active: 161 },
-                      { hour: '22:00', value: Math.round(13 * scaleFactor), engagement: Math.round(98 * scaleFactor), active: 124 },
-                    ];
+                    const hours = ['02:00', '06:00', '10:00', '14:00', '18:00', '22:00'];
+                    const linePoints = hours.map((hourStr) => {
+                      const hourNum = parseInt(hourStr.split(':')[0]);
+                      const matchedPosts = posts.filter(p => {
+                        if (!p.createdAt) return false;
+                        let date: Date;
+                        if (p.createdAt.toDate) {
+                          date = p.createdAt.toDate();
+                        } else if (p.createdAt instanceof Date) {
+                          date = p.createdAt;
+                        } else {
+                          date = new Date(p.createdAt);
+                        }
+                        const postHour = date.getHours();
+                        return postHour >= hourNum - 2 && postHour < hourNum + 2;
+                      });
+
+                      const value = matchedPosts.length;
+                      const engagement = matchedPosts.reduce((acc, p) => acc + (p.likesCount || 0) + (p.commentsCount || 0) + (p.upvotesCount || 0), 0);
+                      const active = Array.from(new Set(matchedPosts.map(p => p.postedFromIp).filter(Boolean))).length;
+
+                      return {
+                        hour: hourStr,
+                        value,
+                        engagement,
+                        active: Math.max(1, active)
+                      };
+                    });
 
                     const width = 450;
                     const height = 180;
@@ -1042,7 +1058,10 @@ export default function AdminPanel({ posts, onNavigateHome }: AdminPanelProps) {
                           <input
                             type="number"
                             value={editLikes}
-                            onChange={(e) => setEditLikes(Number(e.target.value))}
+                            onChange={(e) => {
+                              const val = e.target.value;
+                              setEditLikes(val === '' ? '' : Number(val));
+                            }}
                             className="w-full bg-zinc-900 border border-zinc-850 focus:border-emerald-500/30 rounded px-2.5 py-1.5 text-xs text-zinc-200 focus:outline-none transition-colors"
                           />
                         </div>
@@ -1054,7 +1073,10 @@ export default function AdminPanel({ posts, onNavigateHome }: AdminPanelProps) {
                           <input
                             type="number"
                             value={editUpvotes}
-                            onChange={(e) => setEditUpvotes(Number(e.target.value))}
+                            onChange={(e) => {
+                              const val = e.target.value;
+                              setEditUpvotes(val === '' ? '' : Number(val));
+                            }}
                             className="w-full bg-zinc-900 border border-zinc-850 focus:border-emerald-500/30 rounded px-2.5 py-1.5 text-xs text-zinc-200 focus:outline-none transition-colors"
                           />
                         </div>
@@ -1064,7 +1086,10 @@ export default function AdminPanel({ posts, onNavigateHome }: AdminPanelProps) {
                           <input
                             type="number"
                             value={editDownvotes}
-                            onChange={(e) => setEditDownvotes(Number(e.target.value))}
+                            onChange={(e) => {
+                              const val = e.target.value;
+                              setEditDownvotes(val === '' ? '' : Number(val));
+                            }}
                             className="w-full bg-zinc-900 border border-zinc-850 focus:border-emerald-500/30 rounded px-2.5 py-1.5 text-xs text-zinc-200 focus:outline-none transition-colors"
                           />
                         </div>
