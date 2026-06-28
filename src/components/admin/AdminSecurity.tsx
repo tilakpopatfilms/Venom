@@ -7,6 +7,7 @@ import React, { useState, useEffect } from 'react';
 import { db } from '../../firebase';
 import { collection, doc, setDoc, deleteDoc, onSnapshot } from 'firebase/firestore';
 import { ShieldAlert, Unlock, RefreshCw } from 'lucide-react';
+import { getClientIp } from '../../utils/ip';
 
 export const AdminSecurity: React.FC = () => {
   const [blockedIps, setBlockedIps] = useState<string[]>([]);
@@ -14,6 +15,16 @@ export const AdminSecurity: React.FC = () => {
   const [isFirewallLoading, setIsFirewallLoading] = useState(false);
   const [errorFeedback, setErrorFeedback] = useState<string | null>(null);
   const [successFeedback, setSuccessFeedback] = useState<string | null>(null);
+  const [adminIp, setAdminIp] = useState<string>('');
+
+  // Resolve current administrator's IP address on load
+  useEffect(() => {
+    const resolveIp = async () => {
+      const resolved = await getClientIp();
+      setAdminIp(resolved);
+    };
+    resolveIp();
+  }, []);
 
   // Clear feedback messages automatically
   useEffect(() => {
@@ -96,6 +107,25 @@ export const AdminSecurity: React.FC = () => {
         <ShieldAlert className="w-4 h-4 text-emerald-500/70" />
         <span>IP Firewall Rule Set</span>
       </h3>
+
+      {/* Admin Current IP Address Diagnostic */}
+      {adminIp && (
+        <div className="mb-4 p-2.5 bg-zinc-900/30 border border-zinc-900 rounded flex items-center justify-between text-[10px] font-mono">
+          <span className="text-zinc-500 uppercase tracking-wide">Your IP Signature:</span>
+          <div className="flex items-center gap-1.5">
+            <span className="text-zinc-300 font-bold">{adminIp}</span>
+            {blockedIps.includes(adminIp) ? (
+              <span className="px-1.5 py-0.5 rounded bg-rose-950/40 border border-rose-500/25 text-rose-400 font-bold uppercase text-[7px] tracking-widest animate-pulse">
+                Blocked
+              </span>
+            ) : (
+              <span className="px-1.5 py-0.5 rounded bg-emerald-950/40 border border-emerald-500/25 text-emerald-400 font-bold uppercase text-[7px] tracking-widest">
+                Active
+              </span>
+            )}
+          </div>
+        </div>
+      )}
 
       {/* Feedback Messages */}
       {errorFeedback && (
