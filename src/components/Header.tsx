@@ -31,15 +31,20 @@ export default function Header({
         
         {/* Brand Logo & Title */}
         <div className="flex items-center gap-3">
-          <div className="relative flex items-center justify-center w-9 h-9 bg-emerald-950/20 border border-emerald-500/20 rounded-md overflow-hidden">
-            <Shield className="w-4.5 h-4.5 text-emerald-400" />
+          <div className="relative flex items-center justify-center w-9 h-9 bg-emerald-950/10 border border-emerald-500/10 hover:border-emerald-500/30 rounded-lg overflow-hidden transition-all duration-300 shadow-md shadow-emerald-950/20 group">
+            <img 
+              src="https://i.ibb.co/jkzWK6V6/14895-removebg-preview.png" 
+              alt="Venom" 
+              className="w-7 h-7 object-contain drop-shadow-[0_0_8px_rgba(16,185,129,0.35)] transition-transform duration-500 group-hover:scale-110"
+              referrerPolicy="no-referrer"
+            />
             <div className="absolute inset-0 bg-emerald-500/5 pointer-events-none" />
           </div>
           <div>
-            <h1 className="text-lg font-black tracking-widest font-display text-emerald-400">
+            <h1 className="text-lg font-black tracking-widest font-display text-emerald-400 select-none">
               VENOM
             </h1>
-            <p className="text-[10px] text-zinc-500 font-mono tracking-wider uppercase">
+            <p className="text-[10px] text-zinc-500 font-mono tracking-wider uppercase select-none">
               Official Hub
             </p>
           </div>
