@@ -23,6 +23,7 @@ export interface Post {
   category: string; // e.g. "leaks", "ideas", "general"
   postedFromIp?: string; // Stored user IP for admin visibility
   postedFromDevice?: string; // Stored user agent details for admin
+  reactions?: { [key: string]: number }; // Reaction counts (love, fire, laugh, wow, like, angry)
 }
 
 export interface Comment {
@@ -46,4 +47,5 @@ export interface UserInteractionState {
   votedPolls: { [postId: string]: number }; // postId -> optionIndex chosen
   likedComments: string[]; // commentId or postId_commentId -> boolean
   likedReplies: string[]; // replyId or commentId_replyId -> boolean
+  reactedPosts?: { [postId: string]: string }; // postId -> reactionKey ('love', 'fire', 'laugh', 'wow', 'like', 'angry')
 }

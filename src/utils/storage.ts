@@ -13,6 +13,7 @@ const defaultState: UserInteractionState = {
   votedPolls: {},
   likedComments: [],
   likedReplies: [],
+  reactedPosts: {},
 };
 
 export function getInteractionState(): UserInteractionState {
@@ -119,4 +120,23 @@ export function toggleReplyLikeStore(replyKey: string): boolean {
   }
   saveInteractionState(state);
   return liked;
+}
+
+export function getPostReaction(postId: string): string | null {
+  const state = getInteractionState();
+  if (!state.reactedPosts) return null;
+  return state.reactedPosts[postId] || null;
+}
+
+export function setPostReactionStore(postId: string, reactionKey: string | null): void {
+  const state = getInteractionState();
+  if (!state.reactedPosts) {
+    state.reactedPosts = {};
+  }
+  if (reactionKey === null) {
+    delete state.reactedPosts[postId];
+  } else {
+    state.reactedPosts[postId] = reactionKey;
+  }
+  saveInteractionState(state);
 }

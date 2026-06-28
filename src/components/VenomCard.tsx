@@ -24,7 +24,8 @@ import {
   Twitter,
   Facebook,
   ExternalLink,
-  Send
+  Send,
+  Smile
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { 
@@ -33,7 +34,9 @@ import {
   getPostVote, 
   setPostVoteStore, 
   getPollVotedOption, 
-  setPollVotedOptionStore 
+  setPollVotedOptionStore,
+  getPostReaction,
+  setPostReactionStore
 } from '../utils/storage';
 import { db, handleFirestoreError, OperationType } from '../firebase';
 import { doc, updateDoc, increment, setDoc, deleteDoc } from 'firebase/firestore';
@@ -48,6 +51,22 @@ interface VenomCardProps {
   onPostUpdate?: (updatedPost: Partial<Post>) => void;
 }
 
+const REACTIONS = [
+  { key: 'love', emoji: '❤️', label: 'Love' },
+  { key: 'fire', emoji: '🔥', label: 'Fire' },
+  { key: 'laugh', emoji: '😂', label: 'Laugh' },
+  { key: 'wow', emoji: '😮', label: 'Wow' },
+  { key: 'like', emoji: '👍', label: 'Like' },
+  { key: 'angry', emoji: '😡', label: 'Angry' },
+];
+
+interface FloatingEmoji {
+  id: number;
+  emoji: string;
+  x: number;
+  delay: number;
+}
+
 export default function VenomCard({ post, highlighted = false, onPostUpdate }: VenomCardProps) {
   const [showComments, setShowComments] = useState(false);
   const [isExpandingImage, setIsExpandingImage] = useState(false);
@@ -55,10 +74,18 @@ export default function VenomCard({ post, highlighted = false, onPostUpdate }: V
   const [commentsCount, setCommentsCount] = useState(post.commentsCount);
   const [showShareModal, setShowShareModal] = useState(false);
   const [isCopiedLink, setIsCopiedLink] = useState(false);
+  
+  const [activeReaction, setActiveReaction] = useState<string | null>(null);
+  const [showMobileReactions, setShowMobileReactions] = useState(false);
+  const [floatingEmojis, setFloatingEmojis] = useState<FloatingEmoji[]>([]);
 
   React.useEffect(() => {
     setCommentsCount(post.commentsCount);
   }, [post.commentsCount]);
+
+  React.useEffect(() => {
+    setActiveReaction(getPostReaction(post.id));
+  }, [post.id]);
 
   // Read interaction states from LocalStorage via storage helpers
   const liked = isPostLiked(post.id);
@@ -69,6 +96,7 @@ export default function VenomCard({ post, highlighted = false, onPostUpdate }: V
   const isVotedPoll = votedPollOption !== null;
   const pollVotes = post.pollVotes || {};
   const totalPollVotes = Object.values(pollVotes).reduce((a, b) => a + b, 0);
+  const totalReactions = (Object.values(post.reactions || {}) as number[]).reduce((a, b) => a + b, 0);
 
   const handleLikeToggle = async () => {
     const isLikedNow = togglePostLikeStore(post.id);
@@ -303,6 +331,84 @@ Use it now: https://myvenom.vercel.app`;
     setShowShareModal(true);
   };
 
+  const spawnFloatingEmojis = (emoji: string) => {
+    const newParticles = Array.from({ length: 12 }).map((_, i) => ({
+      id: Date.now() + i + Math.random(),
+      emoji,
+      x: (Math.random() - 0.5) * 140, // Nice horizontal dispersal
+      delay: Math.random() * 0.3, // Beautiful staggered release
+    }));
+    setFloatingEmojis((prev) => [...prev, ...newParticles]);
+    setTimeout(() => {
+      setFloatingEmojis((prev) => prev.filter((p) => !newParticles.find((np) => np.id === p.id)));
+    }, 2500);
+  };
+
+  const handleReact = async (reactionKey: string) => {
+    const oldReaction = activeReaction;
+    const isRemove = oldReaction === reactionKey;
+    const nextReaction = isRemove ? null : reactionKey;
+
+    // Calculate optimistic reactions
+    const currentReactions = { ...(post.reactions || {}) };
+    
+    // Decrement old
+    if (oldReaction) {
+      currentReactions[oldReaction] = Math.max(0, (currentReactions[oldReaction] || 0) - 1);
+    }
+    // Increment new
+    if (nextReaction) {
+      currentReactions[nextReaction] = (currentReactions[nextReaction] || 0) + 1;
+      const emoji = REACTIONS.find(r => r.key === nextReaction)?.emoji || '❤️';
+      spawnFloatingEmojis(emoji);
+    }
+
+    setActiveReaction(nextReaction);
+    setPostReactionStore(post.id, nextReaction);
+    if (onPostUpdate) {
+      onPostUpdate({ reactions: currentReactions });
+    }
+
+    setShowMobileReactions(false);
+
+    try {
+      const userIp = await getClientIp();
+      const interactionRef = doc(db, 'interactions', `${post.id}_${userIp}_reaction`);
+      const postRef = doc(db, 'posts', post.id);
+
+      if (isRemove) {
+        await deleteDoc(interactionRef);
+        await updateDoc(postRef, {
+          [`reactions.${reactionKey}`]: increment(-1),
+        });
+      } else {
+        await setDoc(interactionRef, {
+          ip: userIp,
+          postId: post.id,
+          type: 'reaction',
+          reactionKey,
+          createdAt: new Date().toISOString()
+        });
+
+        const updateData: { [key: string]: any } = {};
+        if (oldReaction) {
+          updateData[`reactions.${oldReaction}`] = increment(-1);
+        }
+        updateData[`reactions.${reactionKey}`] = increment(1);
+
+        await updateDoc(postRef, updateData);
+      }
+    } catch (error) {
+      console.error('Failed to update reaction:', error);
+      setActiveReaction(oldReaction);
+      setPostReactionStore(post.id, oldReaction);
+      if (onPostUpdate) {
+        onPostUpdate({ reactions: post.reactions });
+      }
+      handleFirestoreError(error, OperationType.UPDATE, `posts/${post.id}`);
+    }
+  };
+
   const handleCommentsCountChange = (newCount: number) => {
     setCommentsCount(newCount);
     if (onPostUpdate) {
@@ -330,7 +436,7 @@ Use it now: https://myvenom.vercel.app`;
   return (
     <article 
       id={`post-${post.id}`} 
-      className={`border rounded-lg overflow-hidden flex flex-col hover:shadow-xl transition-all duration-300 font-sans text-zinc-300 ${
+      className={`relative border rounded-lg overflow-hidden flex flex-col hover:shadow-xl transition-all duration-300 font-sans text-zinc-300 ${
         highlighted 
           ? 'border-emerald-500/50 bg-emerald-950/10 shadow-[0_0_20px_rgba(16,185,129,0.15)] ring-1 ring-emerald-500/30' 
           : 'border-zinc-900 bg-zinc-950/70 hover:border-emerald-500/10'
@@ -538,6 +644,42 @@ Use it now: https://myvenom.vercel.app`;
         )}
       </div>
 
+      {/* Mobile Reaction expanded panel: under the Post section center, above footer actions */}
+      <AnimatePresence>
+        {showMobileReactions && (
+          <motion.div
+            initial={{ opacity: 0, height: 0 }}
+            animate={{ opacity: 1, height: 'auto' }}
+            exit={{ opacity: 0, height: 0 }}
+            transition={{ duration: 0.2, ease: 'easeInOut' }}
+            className="overflow-hidden flex justify-center w-full md:hidden bg-zinc-950/20 border-t border-zinc-900/40"
+          >
+            <div className="py-2.5 px-4 flex justify-center w-full">
+              <div className="bg-zinc-900 border border-zinc-800 rounded-full p-1 px-1.5 flex items-center justify-center gap-1.5 shadow-xl">
+                {REACTIONS.map((r) => {
+                  const count = post.reactions?.[r.key] || 0;
+                  const isUserReacted = activeReaction === r.key;
+                  return (
+                    <button
+                      key={r.key}
+                      onClick={() => handleReact(r.key)}
+                      className={`flex items-center gap-1 px-2.5 py-1 rounded-full transition-all duration-200 text-xs cursor-pointer active:scale-90 ${
+                        isUserReacted
+                          ? 'bg-emerald-500/15 border border-emerald-500/30 text-emerald-400 font-bold'
+                          : 'bg-zinc-950/30 border border-transparent text-zinc-400 hover:text-zinc-200'
+                      }`}
+                    >
+                      <span className="text-sm shrink-0">{r.emoji}</span>
+                      <span className="font-mono text-[9px] font-medium opacity-80">{count}</span>
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
       {/* Footer Interactive Actions */}
       <div className="px-3 py-2 border-t border-zinc-900/60 bg-zinc-950 flex items-center justify-between text-zinc-500 font-mono">
         
@@ -595,6 +737,51 @@ Use it now: https://myvenom.vercel.app`;
             <MessageSquare className="w-3.5 h-3.5" />
             <span className="text-[10px]">{commentsCount}</span>
           </button>
+
+          {/* Mobile Reaction Toggle Button (Smiley) */}
+          <button
+            onClick={() => setShowMobileReactions(!showMobileReactions)}
+            className={`flex items-center gap-1.5 px-2.5 py-1 hover:bg-zinc-900/60 rounded text-xs transition-colors cursor-pointer md:hidden ${
+              activeReaction ? 'text-emerald-400 font-semibold' : 'hover:text-emerald-400'
+            }`}
+            title="React to post"
+          >
+            {activeReaction ? (
+              <span className="text-sm shrink-0">
+                {REACTIONS.find((r) => r.key === activeReaction)?.emoji}
+              </span>
+            ) : (
+              <Smile className="w-3.5 h-3.5 text-zinc-500 hover:text-emerald-400" />
+            )}
+            {totalReactions > 0 && (
+              <span className="text-[10px] text-zinc-400 ml-0.5">{totalReactions}</span>
+            )}
+          </button>
+        </div>
+
+        {/* Tablet / PC: Rounded reaction bar with all 6 emojis in a row */}
+        <div className="hidden md:flex items-center gap-1 bg-zinc-900/40 border border-zinc-850/60 rounded-full p-0.5 px-1.5 shadow-inner">
+          {REACTIONS.map((r) => {
+            const count = post.reactions?.[r.key] || 0;
+            const isUserReacted = activeReaction === r.key;
+            return (
+              <button
+                key={r.key}
+                onClick={() => handleReact(r.key)}
+                className={`flex items-center gap-1 px-1.5 py-0.5 rounded-full transition-all duration-200 text-[11px] cursor-pointer group hover:scale-105 active:scale-95 ${
+                  isUserReacted
+                    ? 'bg-emerald-500/15 border border-emerald-500/30 text-emerald-400 font-bold'
+                    : 'bg-transparent border border-transparent text-zinc-500 hover:text-zinc-300'
+                }`}
+                title={r.label}
+              >
+                <span className={`text-sm transition-transform duration-200 ${isUserReacted ? 'scale-110' : 'group-hover:scale-120'}`}>
+                  {r.emoji}
+                </span>
+                {count > 0 && <span className="font-mono text-[9px] font-medium">{count}</span>}
+              </button>
+            );
+          })}
         </div>
 
         {/* Right Side: Share & Timestamp */}
@@ -784,6 +971,30 @@ Use it now: https://myvenom.vercel.app`;
           </motion.div>
         )}
       </AnimatePresence>
+
+      {/* Floating Emoji Particles Container (Instagram-like animations) */}
+      <div className="absolute inset-x-0 bottom-0 pointer-events-none overflow-hidden h-96 z-50 flex items-end justify-center">
+        <AnimatePresence>
+          {floatingEmojis.map((particle) => (
+            <motion.div
+              key={particle.id}
+              initial={{ opacity: 0, y: 20, x: 0, scale: 0.3 }}
+              animate={{ 
+                opacity: [0, 1, 1, 0], 
+                y: -180 - Math.random() * 80, 
+                x: particle.x,
+                scale: [0.3, 1.4, 1.1, 0.7],
+                rotate: (Math.random() - 0.5) * 60 
+              }}
+              transition={{ duration: 1.8, ease: 'easeOut', delay: particle.delay }}
+              className="absolute pointer-events-none text-3xl select-none"
+              style={{ bottom: '24px' }}
+            >
+              {particle.emoji}
+            </motion.div>
+          ))}
+        </AnimatePresence>
+      </div>
 
     </article>
   );

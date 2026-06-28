@@ -177,6 +177,7 @@ export default function App() {
         const likedPosts: string[] = [];
         const votedPosts: { [postId: string]: 'up' | 'down' } = {};
         const votedPolls: { [postId: string]: number } = {};
+        const reactedPosts: { [postId: string]: string } = {};
         
         snap.forEach((docSnap) => {
           const data = docSnap.data();
@@ -187,6 +188,8 @@ export default function App() {
             votedPosts[pId] = data.direction;
           } else if (data.type === 'poll') {
             votedPolls[pId] = data.optionIndex;
+          } else if (data.type === 'reaction') {
+            reactedPosts[pId] = data.reactionKey;
           }
         });
         
@@ -204,6 +207,7 @@ export default function App() {
           votedPolls,
           likedComments: parsed.likedComments || [],
           likedReplies: parsed.likedReplies || [],
+          reactedPosts,
         }));
         
         // Dispatch storage event to notify components of synchronized state

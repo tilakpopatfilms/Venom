@@ -122,6 +122,42 @@ export const AdminPosts: React.FC<AdminPostsProps> = ({ posts, onStartEdit, onBl
                   {post.title || post.content?.substring(0, 50) || 'Anonymous Post (No Content)'}
                 </div>
 
+                {/* Interactions counts stats bar */}
+                <div className="text-[10px] text-zinc-400 flex flex-wrap items-center gap-x-2 gap-y-0.5 font-mono pt-0.5">
+                  <span>LIKES: {post.likesCount || 0}</span>
+                  <span>|</span>
+                  <span>UPVOTES: {post.upvotesCount || 0}</span>
+                  <span>|</span>
+                  <span>DOWNVOTES: {post.downvotesCount || 0}</span>
+                  <span>|</span>
+                  <span>COMMENTS: {post.commentsCount || 0}</span>
+                  <span>|</span>
+                  <span className="text-emerald-400 font-semibold">REACTIONS:</span>
+                  <div className="flex flex-wrap items-center gap-1">
+                    {['love', 'fire', 'laugh', 'wow', 'like', 'angry'].map((key) => {
+                      const emojiMap: { [key: string]: string } = {
+                        love: '❤️',
+                        fire: '🔥',
+                        laugh: '😂',
+                        wow: '😮',
+                        like: '👍',
+                        angry: '😡'
+                      };
+                      const count = post.reactions?.[key] || 0;
+                      if (count === 0) return null;
+                      return (
+                        <span key={key} className="bg-zinc-950 border border-zinc-900 px-1 py-0.2 rounded flex items-center gap-1 text-[9px]">
+                          <span>{emojiMap[key]}</span>
+                          <span className="text-zinc-400 font-bold">{count}</span>
+                        </span>
+                      );
+                    })}
+                    {(Object.values(post.reactions || {}) as number[]).reduce((a, b) => a + b, 0) === 0 && (
+                      <span className="text-zinc-600 italic text-[9px]">(none)</span>
+                    )}
+                  </div>
+                </div>
+
                 {/* Subtitle / IP / Device tracking */}
                 <div className="text-[10px] text-zinc-500 flex flex-wrap items-center gap-x-2 gap-y-0.5">
                   <span className="text-emerald-500/90 font-semibold bg-emerald-950/10 border border-emerald-500/10 px-1 rounded font-mono">
