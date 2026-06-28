@@ -518,12 +518,43 @@ export default function App() {
         {/* Posts Feed container */}
         <div className="space-y-4">
           {isRefreshing ? (
-            /* Loading screen skeleton */
-            <div className="border border-zinc-900 bg-zinc-950/40 rounded-xl p-16 flex flex-col items-center justify-center gap-3">
-              <Cpu className="w-6 h-6 text-emerald-500 animate-spin" />
-              <span className="text-xs text-zinc-500 font-mono tracking-widest uppercase">
-                Updating feed...
-              </span>
+            /* High-fidelity pulsing multi-card skeleton loaders */
+            <div className="space-y-5">
+              {[1, 2, 3].map((num) => (
+                <div 
+                  key={`skeleton-${num}`} 
+                  className="border border-zinc-900/60 bg-zinc-950/60 rounded-lg overflow-hidden flex flex-col p-4 space-y-4 animate-pulse"
+                >
+                  {/* Top Meta Info Header */}
+                  <div className="flex items-center justify-between border-b border-zinc-900/40 pb-2.5">
+                    <div className="flex items-center gap-2">
+                      <div className="h-4 w-16 bg-zinc-900/80 rounded" />
+                      <div className="h-4 w-10 bg-zinc-900/80 rounded" />
+                    </div>
+                    <div className="h-3.5 w-20 bg-zinc-900/80 rounded" />
+                  </div>
+                  
+                  {/* Title & Body content */}
+                  <div className="space-y-3 flex-1">
+                    <div className="h-4 bg-zinc-900/80 rounded w-2/3" />
+                    <div className="space-y-2 pt-1">
+                      <div className="h-3 bg-zinc-900/50 rounded w-full" />
+                      <div className="h-3 bg-zinc-900/50 rounded w-5/6" />
+                      <div className="h-3 bg-zinc-900/50 rounded w-4/5" />
+                    </div>
+                  </div>
+                  
+                  {/* Bottom Interaction Footer */}
+                  <div className="flex items-center justify-between pt-3 border-t border-zinc-900/40">
+                    <div className="flex items-center gap-3">
+                      <div className="h-7 w-20 bg-zinc-900/80 rounded-md" />
+                      <div className="h-7 w-12 bg-zinc-900/80 rounded-md" />
+                      <div className="h-7 w-12 bg-zinc-900/80 rounded-md" />
+                    </div>
+                    <div className="h-5 w-24 bg-zinc-900/80 rounded-md" />
+                  </div>
+                </div>
+              ))}
             </div>
           ) : filteredPosts.length === 0 ? (
             /* Empty slate placeholder */
@@ -561,17 +592,30 @@ export default function App() {
               )}
             </div>
           ) : (
-            /* Real post elements rendered */
-            <div className="space-y-5">
-              {filteredPosts.map((post) => (
-                <VenomCard
-                  key={post.id}
-                  post={post}
-                  highlighted={highlightedPostId === post.id}
-                  onPostUpdate={(fields) => handlePostUpdate(post.id, fields)}
-                />
-              ))}
-            </div>
+            /* Real post elements rendered with layout morphing and smooth animations */
+            <motion.div 
+              layout="position"
+              className="space-y-5"
+            >
+              <AnimatePresence mode="popLayout">
+                {filteredPosts.map((post) => (
+                  <motion.div
+                    key={post.id}
+                    layout="position"
+                    initial={{ opacity: 0, y: 12, scale: 0.99 }}
+                    animate={{ opacity: 1, y: 0, scale: 1 }}
+                    exit={{ opacity: 0, scale: 0.98, y: -8 }}
+                    transition={{ duration: 0.28, ease: [0.16, 1, 0.3, 1] }}
+                  >
+                    <VenomCard
+                      post={post}
+                      highlighted={highlightedPostId === post.id}
+                      onPostUpdate={(fields) => handlePostUpdate(post.id, fields)}
+                    />
+                  </motion.div>
+                ))}
+              </AnimatePresence>
+            </motion.div>
           )}
         </div>
 

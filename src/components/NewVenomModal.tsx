@@ -149,7 +149,7 @@ export default function NewVenomModal({ onClose, onPostCreated }: NewVenomModalP
       setErrorMsg('Title is required.');
       return;
     }
-    if (!content.trim()) {
+    if (type !== 'image' && !content.trim()) {
       setErrorMsg('Content body is required.');
       return;
     }
@@ -346,10 +346,10 @@ export default function NewVenomModal({ onClose, onPostCreated }: NewVenomModalP
               CONTENT / DESCRIPTION
             </label>
             <textarea
-              required
+              required={type !== 'image'}
               value={content}
               onChange={(e) => setContent(e.target.value)}
-              placeholder="What would you like to share?"
+              placeholder={type === 'image' ? "Add an optional description for your image..." : "What would you like to share?"}
               rows={4}
               maxLength={5000}
               className="w-full bg-zinc-900 border border-zinc-800 rounded px-3 py-2 text-xs text-zinc-200 placeholder-zinc-700 focus:outline-none focus:border-emerald-500/30"
@@ -501,7 +501,7 @@ export default function NewVenomModal({ onClose, onPostCreated }: NewVenomModalP
             </button>
             <button
               type="submit"
-              disabled={isSubmitting || !title.trim() || !content.trim()}
+              disabled={isSubmitting || !title.trim() || (type !== 'image' && !content.trim()) || (type === 'image' && !imageUrl)}
               className="bg-emerald-500 hover:bg-emerald-400 text-zinc-950 px-5 py-2 rounded text-xs font-bold tracking-wider flex items-center gap-1.5 transition-all disabled:opacity-40 cursor-pointer font-sans"
             >
               <ShieldCheck className="w-4 h-4" />

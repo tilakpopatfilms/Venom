@@ -298,9 +298,11 @@ export default function VenomCard({ post, highlighted = false, onPostUpdate }: V
         </h2>
 
         {/* Core content text */}
-        <p className="text-xs sm:text-sm text-zinc-400 leading-relaxed mb-4 whitespace-pre-wrap pl-0.5 break-words font-sans">
-          {post.content}
-        </p>
+        {post.content && (
+          <p className="text-xs sm:text-sm text-zinc-400 leading-relaxed mb-4 whitespace-pre-wrap pl-0.5 break-words font-sans">
+            {post.content}
+          </p>
+        )}
 
         {/* --- Image Attachment (Optional for all post types) --- */}
         {post.imageUrl && (
