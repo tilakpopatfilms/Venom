@@ -197,6 +197,34 @@ export default function NewVenomModal({ onClose, onPostCreated }: NewVenomModalP
         return;
       }
 
+      let finalImageUrl = imageUrl;
+      if (type === 'image' && imageUrl && imageUrl.startsWith('data:image')) {
+        try {
+          const uploadRes = await fetch('/api/upload', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({ image: imageUrl }),
+          });
+
+          if (!uploadRes.ok) {
+            const errorData = await uploadRes.json();
+            throw new Error(errorData.error || 'Failed to upload to Cloudinary');
+          }
+
+          const uploadData = await uploadRes.json();
+          if (uploadData.url) {
+            finalImageUrl = uploadData.url;
+          }
+        } catch (uploadErr: any) {
+          console.error('Failed to upload image to Cloudinary:', uploadErr);
+          setErrorMsg(`Image upload failed: ${uploadErr.message || 'Please try again.'}`);
+          setIsSubmitting(false);
+          return;
+        }
+      }
+
       const postsRef = collection(db, 'posts');
       const customDocRef = doc(postsRef); // pre-generate document ID
       const newPostId = customDocRef.id;
@@ -218,8 +246,8 @@ export default function NewVenomModal({ onClose, onPostCreated }: NewVenomModalP
       };
 
       // Set imageUrl if any exists (poll, qa, text, or image type)
-      if (imageUrl) {
-        payload.imageUrl = imageUrl;
+      if (finalImageUrl) {
+        payload.imageUrl = finalImageUrl;
       }
 
       if (type === 'poll' || type === 'qa') {
