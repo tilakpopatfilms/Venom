@@ -17,7 +17,14 @@ import {
   X, 
   BarChart2, 
   HelpCircle, 
-  Hash
+  Hash,
+  Copy,
+  Link,
+  MessageCircle,
+  Twitter,
+  Facebook,
+  ExternalLink,
+  Send
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { 
@@ -45,8 +52,9 @@ export default function VenomCard({ post, highlighted = false, onPostUpdate }: V
   const [showComments, setShowComments] = useState(false);
   const [isExpandingImage, setIsExpandingImage] = useState(false);
   const [isCopingHash, setIsCopingHash] = useState(false);
-  const [isCopiedShare, setIsCopiedShare] = useState(false);
   const [commentsCount, setCommentsCount] = useState(post.commentsCount);
+  const [showShareModal, setShowShareModal] = useState(false);
+  const [isCopiedLink, setIsCopiedLink] = useState(false);
 
   React.useEffect(() => {
     setCommentsCount(post.commentsCount);
@@ -212,11 +220,69 @@ export default function VenomCard({ post, highlighted = false, onPostUpdate }: V
     setTimeout(() => setIsCopingHash(false), 2000);
   };
 
-  const handleShare = () => {
-    const shareUrl = `${window.location.origin}/?id=${post.encryptedHash}`;
+  const shareUrl = `${window.location.origin}/?id=${post.encryptedHash}`;
+  const shareTitle = post.title;
+  const shareText = post.content 
+    ? `"${post.title}" - ${post.content.substring(0, 100)}...` 
+    : `"${post.title}"`;
+
+  const handleCopyLink = () => {
     navigator.clipboard.writeText(shareUrl);
-    setIsCopiedShare(true);
-    setTimeout(() => setIsCopiedShare(false), 2000);
+    setIsCopiedLink(true);
+    setTimeout(() => setIsCopiedLink(false), 2000);
+  };
+
+  const handleNativeShare = async () => {
+    if (navigator.share) {
+      try {
+        await navigator.share({
+          title: shareTitle,
+          text: shareText,
+          url: shareUrl,
+        });
+      } catch (err) {
+        console.log('Error sharing:', err);
+      }
+    } else {
+      handleCopyLink();
+    }
+  };
+
+  const sharePlatforms = [
+    {
+      name: 'WhatsApp',
+      icon: MessageCircle,
+      color: 'hover:text-green-400 hover:border-green-500/30 text-emerald-500/70 hover:bg-green-950/15',
+      url: `https://api.whatsapp.com/send?text=${encodeURIComponent(shareTitle + '\n' + shareText + '\n\nLink: ' + shareUrl)}`
+    },
+    {
+      name: 'X / Twitter',
+      icon: Twitter,
+      color: 'hover:text-sky-400 hover:border-sky-500/30 text-emerald-500/70 hover:bg-sky-950/15',
+      url: `https://twitter.com/intent/tweet?text=${encodeURIComponent(shareTitle)}&url=${encodeURIComponent(shareUrl)}`
+    },
+    {
+      name: 'Telegram',
+      icon: Send,
+      color: 'hover:text-blue-400 hover:border-blue-500/30 text-emerald-500/70 hover:bg-blue-950/15',
+      url: `https://t.me/share/url?url=${encodeURIComponent(shareUrl)}&text=${encodeURIComponent(shareTitle + '\n' + shareText)}`
+    },
+    {
+      name: 'Reddit',
+      icon: ExternalLink,
+      color: 'hover:text-orange-400 hover:border-orange-500/30 text-emerald-500/70 hover:bg-orange-950/15',
+      url: `https://www.reddit.com/submit?url=${encodeURIComponent(shareUrl)}&title=${encodeURIComponent(shareTitle)}`
+    },
+    {
+      name: 'Facebook',
+      icon: Facebook,
+      color: 'hover:text-indigo-400 hover:border-indigo-500/30 text-emerald-500/70 hover:bg-indigo-950/15',
+      url: `https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(shareUrl)}`
+    }
+  ];
+
+  const handleShare = () => {
+    setShowShareModal(true);
   };
 
   const handleCommentsCountChange = (newCount: number) => {
@@ -521,20 +587,8 @@ export default function VenomCard({ post, highlighted = false, onPostUpdate }: V
           <button
             onClick={handleShare}
             className="p-1.5 hover:bg-zinc-900 text-zinc-500 hover:text-emerald-400 rounded transition-all cursor-pointer relative"
-            title="Copy link"
+            title="Share Venom"
           >
-            <AnimatePresence>
-              {isCopiedShare && (
-                <motion.span 
-                  initial={{ opacity: 0, y: -10 }}
-                  animate={{ opacity: 1, y: -22 }}
-                  exit={{ opacity: 0 }}
-                  className="absolute right-0 text-[8px] bg-emerald-500 text-zinc-950 px-1 rounded font-bold whitespace-nowrap"
-                >
-                  COPIED
-                </motion.span>
-              )}
-            </AnimatePresence>
             <Share2 className="w-3.5 h-3.5" />
           </button>
         </div>
@@ -578,6 +632,140 @@ export default function VenomCard({ post, highlighted = false, onPostUpdate }: V
           />
         </div>
       )}
+
+      {/* Premium Social Sharing Modal */}
+      <AnimatePresence>
+        {showShareModal && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 bg-black/85 backdrop-blur-md z-50 flex items-center justify-center p-4"
+            onClick={() => setShowShareModal(false)}
+          >
+            <motion.div
+              initial={{ scale: 0.95, y: 15, opacity: 0 }}
+              animate={{ scale: 1, y: 0, opacity: 1 }}
+              exit={{ scale: 0.95, y: 15, opacity: 0 }}
+              transition={{ type: 'spring', damping: 25, stiffness: 350 }}
+              className="bg-zinc-950 border border-zinc-850 rounded-xl w-full max-w-sm overflow-hidden shadow-2xl relative"
+              onClick={(e) => e.stopPropagation()}
+            >
+              {/* Header */}
+              <div className="p-4 border-b border-zinc-900 flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <Share2 className="w-4 h-4 text-emerald-400" />
+                  <span className="font-mono font-bold text-xs tracking-wider uppercase text-zinc-200">
+                    Share Venom
+                  </span>
+                </div>
+                <button
+                  onClick={() => setShowShareModal(false)}
+                  className="p-1.5 hover:bg-zinc-900 rounded-md text-zinc-500 hover:text-rose-400 transition-colors cursor-pointer"
+                >
+                  <X className="w-4 h-4" />
+                </button>
+              </div>
+
+              {/* Body Content */}
+              <div className="p-4 space-y-4">
+                {/* Title Preview */}
+                <div className="bg-zinc-900/40 border border-zinc-900 rounded-lg p-3 text-left">
+                  <div className="text-[10px] text-zinc-600 font-mono font-bold tracking-wider uppercase mb-1">
+                    Venom Post Preview
+                  </div>
+                  <h4 className="text-xs font-semibold text-zinc-300 font-sans line-clamp-1">
+                    {post.title}
+                  </h4>
+                  {post.content && (
+                    <p className="text-[11px] text-zinc-500 font-sans line-clamp-2 mt-1">
+                      {post.content}
+                    </p>
+                  )}
+                </div>
+
+                {/* Primary Button: Device Native Share (Web Share API) */}
+                {typeof navigator !== 'undefined' && navigator.share && (
+                  <button
+                    onClick={() => {
+                      handleNativeShare();
+                      setShowShareModal(false);
+                    }}
+                    className="w-full bg-emerald-500 hover:bg-emerald-400 text-zinc-950 py-2.5 px-4 rounded-lg font-bold text-xs tracking-wider flex items-center justify-center gap-2 transition-all duration-200 cursor-pointer shadow-lg shadow-emerald-950/20 active:scale-[0.98]"
+                  >
+                    <Share2 className="w-4 h-4 shrink-0" />
+                    SHARE VIA DEVICE APPS
+                  </button>
+                )}
+
+                {/* Grid of Social Platform Shortcuts */}
+                <div className="space-y-2">
+                  <div className="text-[9px] text-zinc-600 font-mono font-bold tracking-wider uppercase text-left">
+                    Social Quick Links
+                  </div>
+                  <div className="grid grid-cols-2 gap-2">
+                    {sharePlatforms.map((platform) => {
+                      const PlatformIcon = platform.icon;
+                      return (
+                        <a
+                          key={platform.name}
+                          href={platform.url}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          onClick={() => {
+                            setTimeout(() => setShowShareModal(false), 500);
+                          }}
+                          className={`flex items-center gap-2.5 p-2 rounded-lg border border-zinc-900 bg-zinc-900/10 text-zinc-400 text-xs transition-all duration-200 ${platform.color} cursor-pointer hover:bg-zinc-900/40 font-sans`}
+                        >
+                          <PlatformIcon className="w-4 h-4 shrink-0" />
+                          <span>{platform.name}</span>
+                        </a>
+                      );
+                    })}
+                  </div>
+                </div>
+
+                {/* Copy Link input box */}
+                <div className="space-y-1.5 pt-1">
+                  <div className="text-[9px] text-zinc-600 font-mono font-bold tracking-wider uppercase text-left">
+                    Direct Secure Link
+                  </div>
+                  <div className="flex gap-2">
+                    <input
+                      type="text"
+                      readOnly
+                      value={shareUrl}
+                      onClick={(e) => (e.target as HTMLInputElement).select()}
+                      className="bg-zinc-900 border border-zinc-850 rounded-lg px-3 py-1.5 text-[11px] text-zinc-400 select-all font-mono flex-1 focus:outline-none focus:border-zinc-700"
+                    />
+                    <button
+                      onClick={handleCopyLink}
+                      className="bg-zinc-900 border border-zinc-800 hover:bg-zinc-800 text-zinc-300 px-3 py-1.5 rounded-lg text-xs font-bold tracking-wider flex items-center gap-1.5 transition-all cursor-pointer relative shrink-0"
+                    >
+                      {isCopiedLink ? (
+                        <>
+                          <Check className="w-3.5 h-3.5 text-emerald-400 animate-pulse" />
+                          <span className="text-emerald-400 text-[10px]">COPIED</span>
+                        </>
+                      ) : (
+                        <>
+                          <Copy className="w-3.5 h-3.5 text-zinc-500" />
+                          <span className="text-[10px]">COPY</span>
+                        </>
+                      )}
+                    </button>
+                  </div>
+                </div>
+              </div>
+
+              {/* Footer status */}
+              <div className="px-4 py-3 bg-zinc-900/40 border-t border-zinc-900 text-center text-[9px] text-zinc-500 font-mono">
+                DECENTRALIZED ANONYMOUS LINK SECURED
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
 
     </article>
   );
