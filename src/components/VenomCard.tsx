@@ -228,27 +228,22 @@ export default function VenomCard({ post, highlighted = false, onPostUpdate }: V
     ? `${window.location.origin}/api/post-image/${post.encryptedHash}`
     : 'https://i.ibb.co/jkzWK6V6/14895-removebg-preview.png';
 
-  // Format a premium, highly optimized marketing cyber-dispatch message
+  // Format a simple, humble and elegant dispatch message matching the user request
   const cleanExcerpt = post.content 
-    ? post.content.length > 150 
-      ? `"${post.content.substring(0, 150)}..."`
+    ? post.content.length > 200 
+      ? `"${post.content.substring(0, 200)}..."`
       : `"${post.content}"`
     : '';
 
-  const dispatchText = `⚡ VENOM: DECENTRALIZED ANONYMOUS GRID ⚡
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-🔒 SECURE DISPATCH: "${post.title.toUpperCase()}"
-${cleanExcerpt ? `\n${cleanExcerpt}\n` : ''}
-📡 DECRYPTION KEY & ACCESS FEED:
-👉 ${shareUrl}
+  const dispatchText = `Venom
 
-📸 ATTACHED DATA PREVIEW:
-🔗 ${imageUrl}
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-Join the sovereign intelligence network. Speak freely. Stay invisible.
-Amel Venom Grid Great Again.`;
+Review —
+"${post.title}"
+${cleanExcerpt ? `${cleanExcerpt}\n` : ''}Link: ${shareUrl}
 
-  const twitterDispatchText = `🔒 VENOM INTEL: "${post.title.substring(0, 85)}" Decoded!\n\nDecrypt grid data:\n👉 ${shareUrl}\n\n📸 Preview:\n${imageUrl}`;
+Use it now: https://myvenom.vercel.app`;
+
+  const twitterDispatchText = `Venom\n\nReview —\n"${post.title}"\nLink: ${shareUrl}`;
 
   const handleCopyLink = () => {
     navigator.clipboard.writeText(shareUrl);
@@ -790,7 +785,7 @@ Amel Venom Grid Great Again.`;
                 {/* Secure Cyber Dispatch text box */}
                 <div className="space-y-1.5 pt-1">
                   <div className="text-[9px] text-zinc-600 font-mono font-bold tracking-wider uppercase text-left">
-                    Secure Dispatch Intel Text
+                    Share Message Text
                   </div>
                   <div className="relative">
                     <textarea
@@ -812,7 +807,7 @@ Amel Venom Grid Great Again.`;
                       ) : (
                         <>
                           <Copy className="w-3 h-3 text-zinc-950" />
-                          <span>COPY INTEL</span>
+                          <span>COPY MESSAGE</span>
                         </>
                       )}
                     </button>
