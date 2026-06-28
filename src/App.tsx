@@ -54,10 +54,6 @@ export default function App() {
   const [activeInfoModal, setActiveInfoModal] = useState<'guidelines' | 'policies' | 'tips' | null>(null);
   const [showFilterDropdown, setShowFilterDropdown] = useState(false);
 
-  // States for shared single post
-  const [sharedPost, setSharedPost] = useState<Post | null>(null);
-  const [sharedPostLoading, setSharedPostLoading] = useState(false);
-
   // Parse path for single post sharing
   const postMatch = currentPath.match(/^\/post\/([a-zA-Z0-9_-]+)/) || currentPath.match(/^\/venom\/([a-zA-Z0-9_-]+)/);
   const sharedPostId = postMatch ? postMatch[1] : null;
@@ -72,6 +68,14 @@ export default function App() {
     window.history.pushState({}, '', '/');
     setCurrentPath('/');
   };
+
+  // Redirect and prefill search if hitting a shared post URL
+  useEffect(() => {
+    if (sharedPostId) {
+      setSearchTerm(sharedPostId);
+      handleBackToHome();
+    }
+  }, [sharedPostId]);
 
   // Redirect to admin panel if the user enters '/admin' into the search input
   useEffect(() => {
@@ -179,52 +183,12 @@ export default function App() {
     }
   }, [dbConnected]);
 
-  // Fetch shared post if active
-  useEffect(() => {
-    if (!sharedPostId) {
-      setSharedPost(null);
-      return;
-    }
-
-    // Try finding in existing posts
-    const existing = posts.find(p => p.id === sharedPostId);
-    if (existing) {
-      setSharedPost(existing);
-      return;
-    }
-
-    const fetchSharedPost = async () => {
-      setSharedPostLoading(true);
-      try {
-        const postRef = doc(db, 'posts', sharedPostId);
-        const postSnap = await getDoc(postRef);
-        if (postSnap.exists()) {
-          setSharedPost({
-            id: postSnap.id,
-            ...postSnap.data()
-          } as Post);
-        } else {
-          setSharedPost(null);
-        }
-      } catch (err) {
-        console.error("Error fetching shared post:", err);
-      } finally {
-        setSharedPostLoading(false);
-      }
-    };
-
-    fetchSharedPost();
-  }, [sharedPostId, posts]);
-
   const handlePostUpdate = (postId: string, updatedFields: Partial<Post>) => {
     setPosts((prevPosts) =>
       prevPosts.map((post) =>
         post.id === postId ? { ...post, ...updatedFields } : post
       )
     );
-    if (sharedPost && sharedPost.id === postId) {
-      setSharedPost(prev => prev ? { ...prev, ...updatedFields } : null);
-    }
   };
 
   const handleRefresh = () => {
@@ -294,108 +258,6 @@ export default function App() {
     );
   }
 
-  // Render shared single post page
-  if (sharedPostId) {
-    return (
-      <motion.div
-        initial={{ opacity: 0, y: 15 }}
-        animate={{ opacity: 1, y: 0 }}
-        exit={{ opacity: 0, y: -15 }}
-        transition={{ duration: 0.22, ease: 'easeOut' }}
-        className="min-h-screen bg-zinc-950 font-sans text-zinc-300 antialiased flex flex-col selection:bg-emerald-500 selection:text-zinc-950"
-      >
-        <Header
-          onNewPostClick={() => {
-            window.history.pushState({}, '', '/');
-            setCurrentPath('/');
-            setTimeout(() => setShowNewPostModal(true), 100);
-          }}
-          onRefresh={handleRefresh}
-          isRefreshing={isRefreshing}
-          onShowGuidelines={() => setActiveInfoModal('guidelines')}
-          onShowPolicies={() => setActiveInfoModal('policies')}
-          onShowTips={() => setActiveInfoModal('tips')}
-          onNavigateAdmin={handleNavigateAdmin}
-        />
-
-        <main className="flex-1 max-w-2xl w-full mx-auto px-4 py-8 space-y-6 relative z-10">
-          
-          <button 
-            onClick={handleBackToHome}
-            className="flex items-center gap-2 text-xs font-bold uppercase tracking-wider font-mono text-zinc-500 hover:text-emerald-400 transition-colors border border-zinc-900 bg-zinc-900/20 px-3.5 py-1.5 rounded-md hover:bg-zinc-950 cursor-pointer"
-          >
-            <ArrowLeft className="w-3.5 h-3.5" />
-            <span>Back to Homepage</span>
-          </button>
-
-          {sharedPostLoading ? (
-            <div className="border border-zinc-900 bg-zinc-950/40 rounded-lg p-16 flex flex-col items-center justify-center gap-3">
-              <div className="w-6 h-6 border-2 border-emerald-500 border-t-transparent rounded-full animate-spin" />
-              <span className="text-[10px] text-zinc-500 font-mono tracking-widest uppercase">
-                Loading Shared Venom...
-              </span>
-            </div>
-          ) : !sharedPost ? (
-            <div className="border border-zinc-900 bg-zinc-950/40 rounded-lg p-16 text-center flex flex-col items-center justify-center gap-4">
-              <ShieldAlert className="w-8 h-8 text-zinc-700" />
-              <div className="max-w-sm space-y-2">
-                <h3 className="text-sm font-bold text-zinc-400 uppercase tracking-widest font-mono">
-                  VENOM NOT FOUND
-                </h3>
-                <p className="text-xs text-zinc-500 leading-relaxed">
-                  This post does not exist or has been removed.
-                </p>
-              </div>
-              <button
-                onClick={handleBackToHome}
-                className="px-4 py-2 bg-emerald-500 hover:bg-emerald-400 text-zinc-950 text-xs font-bold rounded transition-all cursor-pointer"
-              >
-                Back to Feed
-              </button>
-            </div>
-          ) : (
-            <VenomCard
-              post={sharedPost}
-              onPostUpdate={(fields) => handlePostUpdate(sharedPost.id, fields)}
-            />
-          )}
-
-        </main>
-
-        <footer className="mt-auto border-t border-zinc-900/40 py-6 px-4 bg-zinc-950 text-center text-[10px] text-zinc-600 font-mono">
-          <div className="max-w-2xl mx-auto flex flex-col sm:flex-row items-center justify-between gap-3 text-zinc-600">
-            <div className="flex flex-wrap items-center gap-x-4 gap-y-2 justify-center">
-              <button onClick={() => setActiveInfoModal('guidelines')} className="hover:text-zinc-400 transition-colors cursor-pointer">Guidelines</button>
-              <button onClick={() => setActiveInfoModal('policies')} className="hover:text-zinc-400 transition-colors cursor-pointer">Policies</button>
-              <button onClick={() => setActiveInfoModal('tips')} className="hover:text-zinc-400 transition-colors cursor-pointer">Pro Tips</button>
-              <span className="text-zinc-800">|</span>
-              <button onClick={handleNavigateAdmin} className="text-emerald-500 hover:text-emerald-400 transition-colors font-bold cursor-pointer">Admin Panel</button>
-            </div>
-            <span>VENOM FROM OBSIDIAN</span>
-          </div>
-        </footer>
-
-        <AnimatePresence>
-          {showNewPostModal && (
-            <NewVenomModal
-              onClose={() => setShowNewPostModal(false)}
-              onPostCreated={() => handleRefresh()}
-            />
-          )}
-        </AnimatePresence>
-
-        <AnimatePresence>
-          {activeInfoModal && (
-            <InfoModals
-              type={activeInfoModal}
-              onClose={() => setActiveInfoModal(null)}
-            />
-          )}
-        </AnimatePresence>
-      </motion.div>
-    );
-  }
-
   // Render normal feed view
   return (
     <motion.div
@@ -416,7 +278,6 @@ export default function App() {
         onShowGuidelines={() => setActiveInfoModal('guidelines')}
         onShowPolicies={() => setActiveInfoModal('policies')}
         onShowTips={() => setActiveInfoModal('tips')}
-        onNavigateAdmin={handleNavigateAdmin}
       />
 
       {/* Centered Instagram-style Feed Layout */}
@@ -626,8 +487,6 @@ export default function App() {
             <button onClick={() => setActiveInfoModal('guidelines')} className="hover:text-zinc-400 transition-colors cursor-pointer">Guidelines</button>
             <button onClick={() => setActiveInfoModal('policies')} className="hover:text-zinc-400 transition-colors cursor-pointer">Policies</button>
             <button onClick={() => setActiveInfoModal('tips')} className="hover:text-zinc-400 transition-colors cursor-pointer">Pro Tips</button>
-            <span className="text-zinc-800">|</span>
-            <button onClick={handleNavigateAdmin} className="text-emerald-500 hover:text-emerald-400 transition-colors font-bold cursor-pointer">Admin Panel</button>
           </div>
           <span>VENOM FROM OBSIDIAN</span>
         </div>

@@ -4,7 +4,7 @@
  */
 
 import { useState } from 'react';
-import { Shield, RefreshCw, Menu, HelpCircle, ShieldAlert, BookOpen, Cpu } from 'lucide-react';
+import { Shield, RefreshCw, Menu, HelpCircle, ShieldAlert, BookOpen } from 'lucide-react';
 
 interface HeaderProps {
   onNewPostClick: () => void;
@@ -13,7 +13,6 @@ interface HeaderProps {
   onShowGuidelines: () => void;
   onShowPolicies: () => void;
   onShowTips: () => void;
-  onNavigateAdmin: () => void;
 }
 
 export default function Header({
@@ -23,7 +22,6 @@ export default function Header({
   onShowGuidelines,
   onShowPolicies,
   onShowTips,
-  onNavigateAdmin,
 }: HeaderProps) {
   const [showMenuDropdown, setShowMenuDropdown] = useState(false);
 
@@ -82,13 +80,6 @@ export default function Header({
                 >
                   <BookOpen className="w-3.5 h-3.5 text-emerald-500/60" />
                   <span>Pro Tips</span>
-                </button>
-                <button
-                  onClick={() => { onNavigateAdmin(); setShowMenuDropdown(false); }}
-                  className="w-full text-left px-3.5 py-2 hover:bg-zinc-900 hover:text-emerald-400 border-t border-zinc-900 flex items-center gap-2 cursor-pointer transition-colors text-emerald-400 font-bold"
-                >
-                  <Cpu className="w-3.5 h-3.5" />
-                  <span>Admin Panel</span>
                 </button>
               </div>
             )}
