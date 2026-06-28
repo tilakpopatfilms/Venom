@@ -25,15 +25,21 @@ async function getPostByHash(hash: string) {
 }
 
 function generateOgMetaTags(post: any, host: string, hashId: string) {
-  const title = `${post.title} | Venom Secure Network`;
+  const title = `Venom — "${post.title}"`;
   const description = post.content 
-    ? post.content.substring(0, 150) + (post.content.length > 150 ? '...' : '')
+    ? post.content.substring(0, 160) + (post.content.length > 160 ? '...' : '')
     : 'Access declassified anonymous dispatch via Venom decentralized network.';
   
-  // Dynamic binary endpoint to serve high-res previews to social crawlers
-  const imageUrl = post.imageUrl 
-    ? `https://${host}/api/post-image/${hashId}`
-    : 'https://i.ibb.co/jkzWK6V6/14895-removebg-preview.png';
+  // Directly point to the actual post image if it is an external URL to avoid redirects which some social crawlers block,
+  // or fall back directly to the green Venom favicon when no post image exists.
+  let imageUrl = 'https://i.ibb.co/jkzWK6V6/14895-removebg-preview.png';
+  if (post.imageUrl) {
+    if (post.imageUrl.startsWith('data:')) {
+      imageUrl = `https://${host}/api/post-image/${hashId}`;
+    } else if (post.imageUrl.startsWith('http://') || post.imageUrl.startsWith('https://')) {
+      imageUrl = post.imageUrl;
+    }
+  }
 
   const shareUrl = `https://${host}/?id=${hashId}`;
 

@@ -55,7 +55,6 @@ export default function VenomCard({ post, highlighted = false, onPostUpdate }: V
   const [commentsCount, setCommentsCount] = useState(post.commentsCount);
   const [showShareModal, setShowShareModal] = useState(false);
   const [isCopiedLink, setIsCopiedLink] = useState(false);
-  const [isCopiedDispatch, setIsCopiedDispatch] = useState(false);
 
   React.useEffect(() => {
     setCommentsCount(post.commentsCount);
@@ -251,17 +250,11 @@ Use it now: https://myvenom.vercel.app`;
     setTimeout(() => setIsCopiedLink(false), 2000);
   };
 
-  const handleCopyDispatch = () => {
-    navigator.clipboard.writeText(dispatchText);
-    setIsCopiedDispatch(true);
-    setTimeout(() => setIsCopiedDispatch(false), 2000);
-  };
-
   const handleNativeShare = async () => {
     if (navigator.share) {
       try {
         await navigator.share({
-          title: `[VENOM SECURE DISPATCH] ${shareTitle}`,
+          title: `Venom — ${shareTitle}`,
           text: dispatchText,
           url: shareUrl,
         });
@@ -269,7 +262,7 @@ Use it now: https://myvenom.vercel.app`;
         console.log('Error sharing:', err);
       }
     } else {
-      handleCopyDispatch();
+      handleCopyLink();
     }
   };
 
@@ -776,38 +769,6 @@ Use it now: https://myvenom.vercel.app`;
                         <>
                           <Copy className="w-3.5 h-3.5 text-zinc-500" />
                           <span className="text-[10px]">COPY LINK</span>
-                        </>
-                      )}
-                    </button>
-                  </div>
-                </div>
-
-                {/* Secure Cyber Dispatch text box */}
-                <div className="space-y-1.5 pt-1">
-                  <div className="text-[9px] text-zinc-600 font-mono font-bold tracking-wider uppercase text-left">
-                    Share Message Text
-                  </div>
-                  <div className="relative">
-                    <textarea
-                      readOnly
-                      rows={3}
-                      value={dispatchText}
-                      onClick={(e) => (e.target as HTMLTextAreaElement).select()}
-                      className="bg-zinc-900 border border-zinc-850 rounded-lg px-3 py-1.5 text-[10px] text-zinc-500 hover:text-zinc-400 select-all font-mono w-full h-24 focus:outline-none focus:border-zinc-700 resize-none leading-relaxed"
-                    />
-                    <button
-                      onClick={handleCopyDispatch}
-                      className="absolute bottom-2.5 right-2.5 bg-emerald-500 hover:bg-emerald-400 text-zinc-950 px-2.5 py-1 rounded-md text-[10px] font-bold tracking-wider flex items-center gap-1 transition-all cursor-pointer shadow-lg active:scale-95"
-                    >
-                      {isCopiedDispatch ? (
-                        <>
-                          <Check className="w-3 h-3 text-zinc-950" />
-                          <span>COPIED</span>
-                        </>
-                      ) : (
-                        <>
-                          <Copy className="w-3 h-3 text-zinc-950" />
-                          <span>COPY MESSAGE</span>
                         </>
                       )}
                     </button>
