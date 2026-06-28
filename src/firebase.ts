@@ -62,8 +62,21 @@ export interface FirestoreErrorInfo {
 }
 
 export function handleFirestoreError(error: unknown, operationType: OperationType, path: string | null) {
+  const errStr = error instanceof Error ? error.message : String(error);
+
+  // Suppress and ignore harmless idle stream/connection cancellations by Firestore
+  if (
+    errStr.includes('Disconnecting idle stream') ||
+    errStr.includes('Timed out waiting for new targets') ||
+    errStr.includes('CANCELLED') ||
+    (error && typeof error === 'object' && 'code' in error && (error as any).code === 'cancelled')
+  ) {
+    console.warn('Firestore stream idle disconnect (safe auto-reconnect):', errStr);
+    return;
+  }
+
   const errInfo: FirestoreErrorInfo = {
-    error: error instanceof Error ? error.message : String(error),
+    error: errStr,
     authInfo: {
       userId: auth?.currentUser?.uid || null,
       email: auth?.currentUser?.email || null,
