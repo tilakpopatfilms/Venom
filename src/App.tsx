@@ -69,13 +69,7 @@ export default function App() {
     setCurrentPath('/');
   };
 
-  // Redirect and prefill search if hitting a shared post URL
-  useEffect(() => {
-    if (sharedPostId) {
-      setSearchTerm(sharedPostId);
-      handleBackToHome();
-    }
-  }, [sharedPostId]);
+  // No redirect for sharedPostId to preserve the original link in address bar for sharing!
 
   // Redirect to admin panel if the user enters '/admin' into the search input
   useEffect(() => {
@@ -197,48 +191,50 @@ export default function App() {
   };
 
   // Perform client-side category filtering, search queries, and ranking
-  const filteredPosts = posts
-    .filter((post) => {
-      if (activeCategory !== 'all' && post.category !== activeCategory) {
-        return false;
-      }
-      if (searchTerm.trim() !== '') {
-        const term = searchTerm.toLowerCase();
-        const titleMatch = post.title?.toLowerCase().includes(term);
-        const contentMatch = post.content?.toLowerCase().includes(term);
-        const categoryMatch = post.category?.toLowerCase().includes(term);
-        const idMatch = post.id?.toLowerCase().includes(term);
-        const hashMatch = post.encryptedHash?.toLowerCase().includes(term);
-        return titleMatch || contentMatch || categoryMatch || idMatch || hashMatch;
-      }
-      return true;
-    })
-    .sort((a, b) => {
-      if (sortBy === 'upvotes') {
-        const voteScoreA = (a.upvotesCount || 0) - (a.downvotesCount || 0);
-        const voteScoreB = (b.upvotesCount || 0) - (b.downvotesCount || 0);
-        if (voteScoreA !== voteScoreB) return voteScoreB - voteScoreA;
-        return (b.createdAt?.seconds || 0) - (a.createdAt?.seconds || 0);
-      }
-      
-      if (sortBy === 'downvotes') {
-        const downVotesA = a.downvotesCount || 0;
-        const downVotesB = b.downvotesCount || 0;
-        if (downVotesA !== downVotesB) return downVotesB - downVotesA;
-        return (b.createdAt?.seconds || 0) - (a.createdAt?.seconds || 0);
-      }
+  const filteredPosts = sharedPostId
+    ? posts.filter((post) => post.id === sharedPostId || post.encryptedHash === sharedPostId)
+    : posts
+        .filter((post) => {
+          if (activeCategory !== 'all' && post.category !== activeCategory) {
+            return false;
+          }
+          if (searchTerm.trim() !== '') {
+            const term = searchTerm.toLowerCase();
+            const titleMatch = post.title?.toLowerCase().includes(term);
+            const contentMatch = post.content?.toLowerCase().includes(term);
+            const categoryMatch = post.category?.toLowerCase().includes(term);
+            const idMatch = post.id?.toLowerCase().includes(term);
+            const hashMatch = post.encryptedHash?.toLowerCase().includes(term);
+            return titleMatch || contentMatch || categoryMatch || idMatch || hashMatch;
+          }
+          return true;
+        })
+        .sort((a, b) => {
+          if (sortBy === 'upvotes') {
+            const voteScoreA = (a.upvotesCount || 0) - (a.downvotesCount || 0);
+            const voteScoreB = (b.upvotesCount || 0) - (b.downvotesCount || 0);
+            if (voteScoreA !== voteScoreB) return voteScoreB - voteScoreA;
+            return (b.createdAt?.seconds || 0) - (a.createdAt?.seconds || 0);
+          }
+          
+          if (sortBy === 'downvotes') {
+            const downVotesA = a.downvotesCount || 0;
+            const downVotesB = b.downvotesCount || 0;
+            if (downVotesA !== downVotesB) return downVotesB - downVotesA;
+            return (b.createdAt?.seconds || 0) - (a.createdAt?.seconds || 0);
+          }
 
-      if (sortBy === 'likes') {
-        const likesA = a.likesCount || 0;
-        const likesB = b.likesCount || 0;
-        if (likesA !== likesB) return likesB - likesA;
-        return (b.createdAt?.seconds || 0) - (a.createdAt?.seconds || 0);
-      }
+          if (sortBy === 'likes') {
+            const likesA = a.likesCount || 0;
+            const likesB = b.likesCount || 0;
+            if (likesA !== likesB) return likesB - likesA;
+            return (b.createdAt?.seconds || 0) - (a.createdAt?.seconds || 0);
+          }
 
-      const timeA = a.createdAt?.seconds || 0;
-      const timeB = b.createdAt?.seconds || 0;
-      return timeB - timeA;
-    });
+          const timeA = a.createdAt?.seconds || 0;
+          const timeB = b.createdAt?.seconds || 0;
+          return timeB - timeA;
+        });
 
   // Admin route check
   if (currentPath === '/admin') {
@@ -283,105 +279,130 @@ export default function App() {
       {/* Centered Instagram-style Feed Layout */}
       <main className="flex-1 max-w-2xl w-full mx-auto px-4 py-6 space-y-5 relative z-10">
         
-        {/* Feed Filter Panel & Search */}
-        <div className="relative z-30 bg-zinc-900/30 border border-zinc-900 p-4 rounded-xl space-y-3.5 backdrop-blur-md">
-          
-          {/* Sorting Row */}
-          <div className="flex items-center justify-between border-b border-zinc-900/50 pb-2">
-            <span className="text-[10px] font-mono font-bold text-zinc-500 uppercase tracking-widest">Sort By</span>
-            <div className="flex items-center gap-1">
-              {[
-                { id: 'latest', label: 'Latest' },
-                { id: 'upvotes', label: 'Top' },
-                { id: 'downvotes', label: 'Vetoed' },
-                { id: 'likes', label: 'Liked' },
-              ].map((item) => (
-                <button
-                  key={item.id}
-                  onClick={() => setSortBy(item.id as any)}
-                  className={`px-3 py-1 rounded text-[10px] font-bold font-mono uppercase transition-colors cursor-pointer ${
-                    sortBy === item.id
-                      ? 'bg-emerald-500/10 text-emerald-400 font-semibold'
-                      : 'text-zinc-500 hover:text-zinc-300'
-                  }`}
-                >
-                  {item.label}
-                </button>
-              ))}
+        {/* Shared Post Header Banner */}
+        {sharedPostId ? (
+          <div className="flex items-center justify-between bg-emerald-500/10 border border-emerald-500/20 rounded-xl p-4 backdrop-blur-md relative overflow-hidden">
+            <div className="absolute -top-12 -right-12 w-24 h-24 bg-emerald-500/5 rounded-full blur-xl pointer-events-none" />
+            <div className="flex items-center gap-3">
+              <span className="w-2.5 h-2.5 rounded-full bg-emerald-400 animate-pulse border border-emerald-500/30" />
+              <div>
+                <span className="text-[10px] font-mono font-bold text-emerald-400 uppercase tracking-widest block leading-none">
+                  Viewing Shared Venom
+                </span>
+                <span className="text-[8px] text-zinc-500 uppercase tracking-tight font-mono mt-1 block">
+                  Secure cryptographic transmission decrypted
+                </span>
+              </div>
             </div>
+            <button
+              onClick={handleBackToHome}
+              className="flex items-center gap-1.5 text-[10px] font-mono font-bold uppercase tracking-wider text-zinc-400 hover:text-emerald-400 transition-colors bg-zinc-950 border border-zinc-900 hover:border-emerald-500/20 px-3 py-1.5 rounded cursor-pointer active:scale-95 shadow-md"
+            >
+              <ArrowLeft className="w-3.5 h-3.5 text-emerald-400" />
+              <span>View Full Feed</span>
+            </button>
           </div>
+        ) : (
+          /* Normal Feed Filter Panel & Search */
+          <div className="relative z-30 bg-zinc-900/30 border border-zinc-900 p-4 rounded-xl space-y-3.5 backdrop-blur-md">
+            
+            {/* Sorting Row */}
+            <div className="flex items-center justify-between border-b border-zinc-900/50 pb-2">
+              <span className="text-[10px] font-mono font-bold text-zinc-500 uppercase tracking-widest">Sort By</span>
+              <div className="flex items-center gap-1">
+                {[
+                  { id: 'latest', label: 'Latest' },
+                  { id: 'upvotes', label: 'Top' },
+                  { id: 'downvotes', label: 'Vetoed' },
+                  { id: 'likes', label: 'Liked' },
+                ].map((item) => (
+                  <button
+                    key={item.id}
+                    onClick={() => setSortBy(item.id as any)}
+                    className={`px-3 py-1 rounded text-[10px] font-bold font-mono uppercase transition-colors cursor-pointer ${
+                      sortBy === item.id
+                        ? 'bg-emerald-500/10 text-emerald-400 font-semibold'
+                        : 'text-zinc-500 hover:text-zinc-300'
+                    }`}
+                  >
+                    {item.label}
+                  </button>
+                ))}
+              </div>
+            </div>
 
-          {/* Search and Channel Filter Row */}
-          <div className="flex gap-2 items-center">
-            {/* Search Input Bar */}
-            <div className="relative flex-1">
-              <Search className="absolute left-3 top-2.5 w-3.5 h-3.5 text-zinc-500" />
-              <input
-                type="text"
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-                placeholder="Search..."
-                className="w-full bg-zinc-950 border border-zinc-900 focus:border-emerald-500/30 rounded-md pl-9 pr-8 py-2 text-xs text-zinc-300 placeholder-zinc-600 focus:outline-none transition-colors"
-              />
-              {searchTerm && (
+            {/* Search and Channel Filter Row */}
+            <div className="flex gap-2 items-center">
+              {/* Search Input Bar */}
+              <div className="relative flex-1">
+                <Search className="absolute left-3 top-2.5 w-3.5 h-3.5 text-zinc-500" />
+                <input
+                  type="text"
+                  value={searchTerm}
+                  onChange={(e) => setSearchTerm(e.target.value)}
+                  placeholder="Search..."
+                  className="w-full bg-zinc-950 border border-zinc-900 focus:border-emerald-500/30 rounded-md pl-9 pr-8 py-2 text-xs text-zinc-300 placeholder-zinc-600 focus:outline-none transition-colors"
+                />
+                {searchTerm && (
+                  <button 
+                    onClick={() => setSearchTerm('')}
+                    className="absolute right-2.5 top-2.5 hover:text-rose-400 text-zinc-500 transition-colors"
+                  >
+                    <X className="w-3.5 h-3.5" />
+                  </button>
+                )}
+              </div>
+
+              {/* Filter Dropdown Button */}
+              <div className="relative">
                 <button 
-                  onClick={() => setSearchTerm('')}
-                  className="absolute right-2.5 top-2.5 hover:text-rose-400 text-zinc-500 transition-colors"
+                  onClick={() => setShowFilterDropdown(!showFilterDropdown)}
+                  className="px-3 py-2 border border-zinc-900 bg-zinc-900/60 hover:bg-zinc-950 text-zinc-300 rounded-md text-xs font-mono font-bold uppercase transition-colors flex items-center gap-1.5 cursor-pointer whitespace-nowrap"
                 >
-                  <X className="w-3.5 h-3.5" />
+                  <SlidersHorizontal className="w-3.5 h-3.5 text-emerald-400" />
+                  <span>{activeCategory === 'all' ? 'All Channels' : `#${activeCategory}`}</span>
                 </button>
-              )}
+                
+                {showFilterDropdown && (
+                  <>
+                    <div 
+                      className="fixed inset-0 z-40" 
+                      onClick={() => setShowFilterDropdown(false)} 
+                    />
+                    <div className="absolute right-0 mt-2 w-44 bg-zinc-950 border border-zinc-900 rounded-md shadow-2xl z-50 py-1 text-xs font-mono">
+                      {[
+                        { id: 'all', label: 'All Channels' },
+                        { id: 'general', label: '#general' },
+                        { id: 'tech', label: '#tech' },
+                        { id: 'design', label: '#design' },
+                        { id: 'gaming', label: '#gaming' },
+                        { id: 'lifestyle', label: '#lifestyle' },
+                      ].map((cat) => (
+                        <button
+                          key={cat.id}
+                          onClick={() => {
+                            setActiveCategory(cat.id);
+                            setShowFilterDropdown(false);
+                          }}
+                          className={`w-full text-left px-3.5 py-2 hover:bg-zinc-900 transition-colors flex items-center justify-between cursor-pointer ${
+                            activeCategory === cat.id ? 'text-emerald-400 font-bold' : 'text-zinc-500 hover:text-zinc-300'
+                          }`}
+                        >
+                          <span>{cat.label}</span>
+                          {activeCategory === cat.id && <Check className="w-3.5 h-3.5" />}
+                        </button>
+                      ))}
+                    </div>
+                  </>
+                )}
+              </div>
             </div>
 
-            {/* Filter Dropdown Button */}
-            <div className="relative">
-              <button 
-                onClick={() => setShowFilterDropdown(!showFilterDropdown)}
-                className="px-3 py-2 border border-zinc-900 bg-zinc-900/60 hover:bg-zinc-950 text-zinc-300 rounded-md text-xs font-mono font-bold uppercase transition-colors flex items-center gap-1.5 cursor-pointer whitespace-nowrap"
-              >
-                <SlidersHorizontal className="w-3.5 h-3.5 text-emerald-400" />
-                <span>{activeCategory === 'all' ? 'All Channels' : `#${activeCategory}`}</span>
-              </button>
-              
-              {showFilterDropdown && (
-                <>
-                  <div 
-                    className="fixed inset-0 z-40" 
-                    onClick={() => setShowFilterDropdown(false)} 
-                  />
-                  <div className="absolute right-0 mt-2 w-44 bg-zinc-950 border border-zinc-900 rounded-md shadow-2xl z-50 py-1 text-xs font-mono">
-                    {[
-                      { id: 'all', label: 'All Channels' },
-                      { id: 'general', label: '#general' },
-                      { id: 'tech', label: '#tech' },
-                      { id: 'design', label: '#design' },
-                      { id: 'gaming', label: '#gaming' },
-                      { id: 'lifestyle', label: '#lifestyle' },
-                    ].map((cat) => (
-                      <button
-                        key={cat.id}
-                        onClick={() => {
-                          setActiveCategory(cat.id);
-                          setShowFilterDropdown(false);
-                        }}
-                        className={`w-full text-left px-3.5 py-2 hover:bg-zinc-900 transition-colors flex items-center justify-between cursor-pointer ${
-                          activeCategory === cat.id ? 'text-emerald-400 font-bold' : 'text-zinc-500 hover:text-zinc-300'
-                        }`}
-                      >
-                        <span>{cat.label}</span>
-                        {activeCategory === cat.id && <Check className="w-3.5 h-3.5" />}
-                      </button>
-                    ))}
-                  </div>
-                </>
-              )}
-            </div>
           </div>
-
-        </div>
+        )}
 
         {/* Active filter summary (if active) */}
-        {(searchTerm || activeCategory !== 'all') && (
+        {!sharedPostId && (searchTerm || activeCategory !== 'all') && (
           <div className="flex flex-col items-center gap-3">
             <div className="text-[10px] font-mono text-zinc-500 flex items-center gap-2 px-1 justify-center flex-wrap">
               <span>ACTIVE FILTER:</span>
@@ -430,18 +451,29 @@ export default function App() {
               <ShieldAlert className="w-8 h-8 text-zinc-700" />
               <div className="max-w-sm space-y-1">
                 <h3 className="text-xs font-bold text-zinc-400 uppercase tracking-widest font-mono">
-                  No Posts Detected
+                  {sharedPostId ? 'Shared Venom Not Found' : 'No Posts Detected'}
                 </h3>
                 <p className="text-xs text-zinc-500 leading-relaxed">
-                  This channel is currently empty.
+                  {sharedPostId 
+                    ? 'The shared post link is invalid, expired, or was purged by system security.' 
+                    : 'This channel is currently empty.'}
                 </p>
               </div>
-              <button
-                onClick={() => setShowNewPostModal(true)}
-                className="px-4 py-2 bg-emerald-500 hover:bg-emerald-400 text-zinc-950 text-xs font-bold rounded transition-all cursor-pointer"
-              >
-                + Create the First Post
-              </button>
+              {sharedPostId ? (
+                <button
+                  onClick={handleBackToHome}
+                  className="px-4 py-2 bg-zinc-900 hover:bg-zinc-800 text-zinc-300 border border-zinc-800 hover:border-zinc-750 text-xs font-bold rounded transition-all cursor-pointer font-mono uppercase tracking-wider"
+                >
+                  Go to Main Feed
+                </button>
+              ) : (
+                <button
+                  onClick={() => setShowNewPostModal(true)}
+                  className="px-4 py-2 bg-emerald-500 hover:bg-emerald-400 text-zinc-950 text-xs font-bold rounded transition-all cursor-pointer"
+                >
+                  + Create the First Post
+                </button>
+              )}
             </div>
           ) : (
             /* Real post elements rendered */
