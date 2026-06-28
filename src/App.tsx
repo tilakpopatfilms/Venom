@@ -71,14 +71,6 @@ export default function App() {
 
   // No redirect for sharedPostId to preserve the original link in address bar for sharing!
 
-  // Redirect to admin panel if the user enters '/admin' into the search input
-  useEffect(() => {
-    if (searchTerm.trim() === '/admin') {
-      setSearchTerm('');
-      handleNavigateAdmin();
-    }
-  }, [searchTerm]);
-
   // Load operative local metadata & listen to location routes
   useEffect(() => {
     setOpId(getOperativeID());

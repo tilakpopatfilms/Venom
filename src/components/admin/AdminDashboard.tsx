@@ -4,6 +4,8 @@
  */
 
 import React, { useState, useEffect } from 'react';
+import { db } from '../../firebase';
+import { doc, setDoc } from 'firebase/firestore';
 import { Post } from '../../types';
 import { AdminTelemetry } from './AdminTelemetry';
 import { AdminSecurity } from './AdminSecurity';
@@ -67,6 +69,20 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ posts, onNavigat
 
   const handleSavedEdit = () => {
     setSelectedPostToEdit(null);
+  };
+
+  const handleBlockIp = async (ip: string) => {
+    try {
+      const blockRef = doc(db, 'blockedIps', ip);
+      await setDoc(blockRef, {
+        blockedAt: new Date().toISOString(),
+        reason: 'Community Guidelines Violation (Admin Enforced)'
+      });
+      alert(`IP Address ${ip} has been successfully blacklisted and suspended.`);
+    } catch (err: any) {
+      console.error('Failed to block IP:', err);
+      alert(`Failed to block IP: ${err.message || err}`);
+    }
   };
 
   return (
@@ -204,6 +220,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ posts, onNavigat
                 <AdminPosts 
                   posts={posts} 
                   onStartEdit={setSelectedPostToEdit}
+                  onBlockIpClick={handleBlockIp}
                 />
               </div>
 
