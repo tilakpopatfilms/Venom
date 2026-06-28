@@ -213,7 +213,7 @@ export default function VenomCard({ post, highlighted = false, onPostUpdate }: V
   };
 
   const handleShare = () => {
-    const shareUrl = `${window.location.origin}/post/${post.id}`;
+    const shareUrl = `${window.location.origin}/?id=${post.encryptedHash}`;
     navigator.clipboard.writeText(shareUrl);
     setIsCopiedShare(true);
     setTimeout(() => setIsCopiedShare(false), 2000);

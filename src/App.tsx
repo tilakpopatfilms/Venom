@@ -50,7 +50,9 @@ export default function App() {
   const [showNewPostModal, setShowNewPostModal] = useState(false);
   const [opId, setOpId] = useState('');
   const [dbConnected, setDbConnected] = useState<boolean | null>(null);
-  const [currentPath, setCurrentPath] = useState(window.location.pathname);
+  const [currentPath, setCurrentPath] = useState(
+    window.location.pathname + window.location.search
+  );
   const [activeInfoModal, setActiveInfoModal] = useState<'guidelines' | 'policies' | 'tips' | null>(null);
   const [showFilterDropdown, setShowFilterDropdown] = useState(false);
   const [highlightedPostId, setHighlightedPostId] = useState<string | null>(null);
@@ -59,22 +61,39 @@ export default function App() {
   const postMatch = currentPath.match(/^\/post\/([a-zA-Z0-9_-]+)/) || currentPath.match(/^\/venom\/([a-zA-Z0-9_-]+)/);
   const sharedPostId = postMatch ? postMatch[1] : null;
 
+  const urlParams = new URLSearchParams(window.location.search);
+  const sharedHashId = urlParams.get('id');
+
   // Direct navigation functions that synchronously sync browser history and React state
   const handleNavigateAdmin = () => {
     window.history.pushState({}, '', '/admin');
-    setCurrentPath('/admin');
+    setCurrentPath(
+      window.location.pathname +
+      window.location.search
+    );
   };
 
   const handleBackToHome = () => {
     window.history.pushState({}, '', '/');
-    setCurrentPath('/');
+    setCurrentPath(
+      window.location.pathname +
+      window.location.search
+    );
   };
 
   // Synchronize routing and auto-decryption parameters on direct URL load
   useEffect(() => {
-    if (sharedPostId && posts.length > 0) {
+    if (
+      (sharedPostId || sharedHashId) &&
+      posts.length > 0
+    ) {
+      const targetId =
+        sharedPostId || sharedHashId;
+
       const foundPost = posts.find(
-        (p) => p.id === sharedPostId || p.encryptedHash === sharedPostId
+        (p) =>
+          p.id === targetId ||
+          p.encryptedHash === targetId
       );
       if (foundPost) {
         // Automatically navigate to the homepage by replacing address bar entry
@@ -96,14 +115,17 @@ export default function App() {
         }, 800);
       }
     }
-  }, [sharedPostId, posts]);
+  }, [sharedPostId, sharedHashId, posts]);
 
   // Load operative local metadata & listen to location routes
   useEffect(() => {
     setOpId(getOperativeID());
 
     const handleLocationChange = () => {
-      setCurrentPath(window.location.pathname);
+      setCurrentPath(
+        window.location.pathname +
+        window.location.search
+      );
     };
     window.addEventListener('popstate', handleLocationChange);
     return () => window.removeEventListener('popstate', handleLocationChange);
@@ -210,8 +232,11 @@ export default function App() {
   };
 
   // Perform client-side category filtering, search queries, and ranking
-  const filteredPosts = sharedPostId
-    ? posts.filter((post) => post.id === sharedPostId || post.encryptedHash === sharedPostId)
+  const filteredPosts = (sharedPostId || sharedHashId)
+    ? posts.filter((post) => {
+        const targetId = sharedPostId || sharedHashId;
+        return post.id === targetId || post.encryptedHash === targetId;
+      })
     : posts
         .filter((post) => {
           if (activeCategory !== 'all' && post.category !== activeCategory) {
@@ -256,7 +281,7 @@ export default function App() {
         });
 
   // Admin route check
-  if (currentPath === '/admin') {
+  if (currentPath.startsWith('/admin')) {
     return (
       <motion.div
         initial={{ opacity: 0, y: 15 }}
@@ -299,7 +324,7 @@ export default function App() {
       <main className="flex-1 max-w-2xl w-full mx-auto px-4 py-6 space-y-5 relative z-10">
         
         {/* Shared Post Header Banner */}
-        {sharedPostId ? (
+        {(sharedPostId || sharedHashId) ? (
           <div className="flex items-center justify-between bg-emerald-500/10 border border-emerald-500/20 rounded-xl p-4 backdrop-blur-md relative overflow-hidden">
             <div className="absolute -top-12 -right-12 w-24 h-24 bg-emerald-500/5 rounded-full blur-xl pointer-events-none" />
             <div className="flex items-center gap-3">
@@ -314,7 +339,12 @@ export default function App() {
               </div>
             </div>
             <button
-              onClick={handleBackToHome}
+              onClick={() => {
+                setSearchTerm('');
+                setHighlightedPostId(null);
+                setActiveCategory('all');
+                handleBackToHome();
+              }}
               className="flex items-center gap-1.5 text-[10px] font-mono font-bold uppercase tracking-wider text-zinc-400 hover:text-emerald-400 transition-colors bg-zinc-950 border border-zinc-900 hover:border-emerald-500/20 px-3 py-1.5 rounded cursor-pointer active:scale-95 shadow-md"
             >
               <ArrowLeft className="w-3.5 h-3.5 text-emerald-400" />
@@ -421,7 +451,7 @@ export default function App() {
         )}
 
         {/* Active filter summary (if active) */}
-        {!sharedPostId && (searchTerm || activeCategory !== 'all') && (
+        {!(sharedPostId || sharedHashId) && (searchTerm || activeCategory !== 'all') && (
           <div className="flex flex-col items-center gap-3">
             <div className="text-[10px] font-mono text-zinc-500 flex items-center gap-2 px-1 justify-center flex-wrap">
               <span>ACTIVE FILTER:</span>
@@ -456,7 +486,7 @@ export default function App() {
         )}
 
         {/* Target post shared search highlight banner */}
-        {!sharedPostId && highlightedPostId && searchTerm && (
+        {!(sharedPostId || sharedHashId) && highlightedPostId && searchTerm && (
           <div className="flex items-center justify-between bg-emerald-500/10 border border-emerald-500/20 rounded-xl p-4 backdrop-blur-md relative overflow-hidden">
             <div className="absolute -top-12 -right-12 w-24 h-24 bg-emerald-500/5 rounded-full blur-xl pointer-events-none" />
             <div className="flex items-center gap-3">
@@ -501,17 +531,22 @@ export default function App() {
               <ShieldAlert className="w-8 h-8 text-zinc-700" />
               <div className="max-w-sm space-y-1">
                 <h3 className="text-xs font-bold text-zinc-400 uppercase tracking-widest font-mono">
-                  {sharedPostId ? 'Shared Venom Not Found' : 'No Posts Detected'}
+                  {(sharedPostId || sharedHashId) ? 'Shared Venom Not Found' : 'No Posts Detected'}
                 </h3>
                 <p className="text-xs text-zinc-500 leading-relaxed">
-                  {sharedPostId 
+                  {(sharedPostId || sharedHashId)
                     ? 'The shared post link is invalid, expired, or was purged by system security.' 
                     : 'This channel is currently empty.'}
                 </p>
               </div>
-              {sharedPostId ? (
+              {(sharedPostId || sharedHashId) ? (
                 <button
-                  onClick={handleBackToHome}
+                  onClick={() => {
+                    setSearchTerm('');
+                    setHighlightedPostId(null);
+                    setActiveCategory('all');
+                    handleBackToHome();
+                  }}
                   className="px-4 py-2 bg-zinc-900 hover:bg-zinc-800 text-zinc-300 border border-zinc-800 hover:border-zinc-750 text-xs font-bold rounded transition-all cursor-pointer font-mono uppercase tracking-wider"
                 >
                   Go to Main Feed
@@ -539,41 +574,21 @@ export default function App() {
             </div>
           )}
         </div>
+
       </main>
 
-      {/* Inject New Post Modal */}
-      <AnimatePresence>
-        {showNewPostModal && (
-          <NewVenomModal
-            onClose={() => setShowNewPostModal(false)}
-            onPostCreated={() => {
-              handleRefresh();
-            }}
-          />
-        )}
-      </AnimatePresence>
+      {/* Dynamic Modal Interfaces */}
+      {showNewPostModal && (
+        <NewVenomModal 
+          onClose={() => setShowNewPostModal(false)} 
+          onPostCreated={handleRefresh}
+        />
+      )}
 
-      {/* Info Modals for Guidelines, Policies and Tips */}
-      <AnimatePresence>
-        {activeInfoModal && (
-          <InfoModals
-            type={activeInfoModal}
-            onClose={() => setActiveInfoModal(null)}
-          />
-        )}
-      </AnimatePresence>
-
-      {/* Sleek, professional official footer */}
-      <footer className="mt-auto border-t border-zinc-900/40 py-6 px-4 bg-zinc-950 text-center text-[10px] text-zinc-600 font-mono">
-        <div className="max-w-2xl mx-auto flex flex-col sm:flex-row items-center justify-between gap-3 text-zinc-600">
-          <div className="flex flex-wrap items-center gap-x-4 gap-y-2 justify-center">
-            <button onClick={() => setActiveInfoModal('guidelines')} className="hover:text-zinc-400 transition-colors cursor-pointer">Guidelines</button>
-            <button onClick={() => setActiveInfoModal('policies')} className="hover:text-zinc-400 transition-colors cursor-pointer">Policies</button>
-            <button onClick={() => setActiveInfoModal('tips')} className="hover:text-zinc-400 transition-colors cursor-pointer">Pro Tips</button>
-          </div>
-          <span>VENOM FROM OBSIDIAN</span>
-        </div>
-      </footer>
+      <InfoModals 
+        type={activeInfoModal} 
+        onClose={() => setActiveInfoModal(null)} 
+      />
 
     </motion.div>
   );
