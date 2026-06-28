@@ -55,6 +55,7 @@ export default function VenomCard({ post, highlighted = false, onPostUpdate }: V
   const [commentsCount, setCommentsCount] = useState(post.commentsCount);
   const [showShareModal, setShowShareModal] = useState(false);
   const [isCopiedLink, setIsCopiedLink] = useState(false);
+  const [isCopiedDispatch, setIsCopiedDispatch] = useState(false);
 
   React.useEffect(() => {
     setCommentsCount(post.commentsCount);
@@ -222,9 +223,32 @@ export default function VenomCard({ post, highlighted = false, onPostUpdate }: V
 
   const shareUrl = `${window.location.origin}/?id=${post.encryptedHash}`;
   const shareTitle = post.title;
-  const shareText = post.content 
-    ? `"${post.title}" - ${post.content.substring(0, 100)}...` 
-    : `"${post.title}"`;
+
+  const imageUrl = post.imageUrl 
+    ? `${window.location.origin}/api/post-image/${post.encryptedHash}`
+    : 'https://i.ibb.co/jkzWK6V6/14895-removebg-preview.png';
+
+  // Format a premium, highly optimized marketing cyber-dispatch message
+  const cleanExcerpt = post.content 
+    ? post.content.length > 150 
+      ? `"${post.content.substring(0, 150)}..."`
+      : `"${post.content}"`
+    : '';
+
+  const dispatchText = `⚡ VENOM: DECENTRALIZED ANONYMOUS GRID ⚡
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+🔒 SECURE DISPATCH: "${post.title.toUpperCase()}"
+${cleanExcerpt ? `\n${cleanExcerpt}\n` : ''}
+📡 DECRYPTION KEY & ACCESS FEED:
+👉 ${shareUrl}
+
+📸 ATTACHED DATA PREVIEW:
+🔗 ${imageUrl}
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+Join the sovereign intelligence network. Speak freely. Stay invisible.
+Amel Venom Grid Great Again.`;
+
+  const twitterDispatchText = `🔒 VENOM INTEL: "${post.title.substring(0, 85)}" Decoded!\n\nDecrypt grid data:\n👉 ${shareUrl}\n\n📸 Preview:\n${imageUrl}`;
 
   const handleCopyLink = () => {
     navigator.clipboard.writeText(shareUrl);
@@ -232,19 +256,25 @@ export default function VenomCard({ post, highlighted = false, onPostUpdate }: V
     setTimeout(() => setIsCopiedLink(false), 2000);
   };
 
+  const handleCopyDispatch = () => {
+    navigator.clipboard.writeText(dispatchText);
+    setIsCopiedDispatch(true);
+    setTimeout(() => setIsCopiedDispatch(false), 2000);
+  };
+
   const handleNativeShare = async () => {
     if (navigator.share) {
       try {
         await navigator.share({
-          title: shareTitle,
-          text: shareText,
+          title: `[VENOM SECURE DISPATCH] ${shareTitle}`,
+          text: dispatchText,
           url: shareUrl,
         });
       } catch (err) {
         console.log('Error sharing:', err);
       }
     } else {
-      handleCopyLink();
+      handleCopyDispatch();
     }
   };
 
@@ -253,25 +283,25 @@ export default function VenomCard({ post, highlighted = false, onPostUpdate }: V
       name: 'WhatsApp',
       icon: MessageCircle,
       color: 'hover:text-green-400 hover:border-green-500/30 text-emerald-500/70 hover:bg-green-950/15',
-      url: `https://api.whatsapp.com/send?text=${encodeURIComponent(shareTitle + '\n' + shareText + '\n\nLink: ' + shareUrl)}`
+      url: `https://api.whatsapp.com/send?text=${encodeURIComponent(dispatchText)}`
     },
     {
       name: 'X / Twitter',
       icon: Twitter,
       color: 'hover:text-sky-400 hover:border-sky-500/30 text-emerald-500/70 hover:bg-sky-950/15',
-      url: `https://twitter.com/intent/tweet?text=${encodeURIComponent(shareTitle)}&url=${encodeURIComponent(shareUrl)}`
+      url: `https://twitter.com/intent/tweet?text=${encodeURIComponent(twitterDispatchText)}&url=${encodeURIComponent(shareUrl)}`
     },
     {
       name: 'Telegram',
       icon: Send,
       color: 'hover:text-blue-400 hover:border-blue-500/30 text-emerald-500/70 hover:bg-blue-950/15',
-      url: `https://t.me/share/url?url=${encodeURIComponent(shareUrl)}&text=${encodeURIComponent(shareTitle + '\n' + shareText)}`
+      url: `https://t.me/share/url?url=${encodeURIComponent(shareUrl)}&text=${encodeURIComponent(dispatchText)}`
     },
     {
       name: 'Reddit',
       icon: ExternalLink,
       color: 'hover:text-orange-400 hover:border-orange-500/30 text-emerald-500/70 hover:bg-orange-950/15',
-      url: `https://www.reddit.com/submit?url=${encodeURIComponent(shareUrl)}&title=${encodeURIComponent(shareTitle)}`
+      url: `https://www.reddit.com/submit?url=${encodeURIComponent(shareUrl)}&title=${encodeURIComponent(`[VENOM SECURE INTEL] ${shareTitle}`)}`
     },
     {
       name: 'Facebook',
@@ -750,7 +780,39 @@ export default function VenomCard({ post, highlighted = false, onPostUpdate }: V
                       ) : (
                         <>
                           <Copy className="w-3.5 h-3.5 text-zinc-500" />
-                          <span className="text-[10px]">COPY</span>
+                          <span className="text-[10px]">COPY LINK</span>
+                        </>
+                      )}
+                    </button>
+                  </div>
+                </div>
+
+                {/* Secure Cyber Dispatch text box */}
+                <div className="space-y-1.5 pt-1">
+                  <div className="text-[9px] text-zinc-600 font-mono font-bold tracking-wider uppercase text-left">
+                    Secure Dispatch Intel Text
+                  </div>
+                  <div className="relative">
+                    <textarea
+                      readOnly
+                      rows={3}
+                      value={dispatchText}
+                      onClick={(e) => (e.target as HTMLTextAreaElement).select()}
+                      className="bg-zinc-900 border border-zinc-850 rounded-lg px-3 py-1.5 text-[10px] text-zinc-500 hover:text-zinc-400 select-all font-mono w-full h-24 focus:outline-none focus:border-zinc-700 resize-none leading-relaxed"
+                    />
+                    <button
+                      onClick={handleCopyDispatch}
+                      className="absolute bottom-2.5 right-2.5 bg-emerald-500 hover:bg-emerald-400 text-zinc-950 px-2.5 py-1 rounded-md text-[10px] font-bold tracking-wider flex items-center gap-1 transition-all cursor-pointer shadow-lg active:scale-95"
+                    >
+                      {isCopiedDispatch ? (
+                        <>
+                          <Check className="w-3 h-3 text-zinc-950" />
+                          <span>COPIED</span>
+                        </>
+                      ) : (
+                        <>
+                          <Copy className="w-3 h-3 text-zinc-950" />
+                          <span>COPY INTEL</span>
                         </>
                       )}
                     </button>
