@@ -37,10 +37,11 @@ import CommentsPane from './CommentsPane';
 interface VenomCardProps {
   key?: string | number;
   post: Post;
+  highlighted?: boolean;
   onPostUpdate?: (updatedPost: Partial<Post>) => void;
 }
 
-export default function VenomCard({ post, onPostUpdate }: VenomCardProps) {
+export default function VenomCard({ post, highlighted = false, onPostUpdate }: VenomCardProps) {
   const [showComments, setShowComments] = useState(false);
   const [isExpandingImage, setIsExpandingImage] = useState(false);
   const [isCopingHash, setIsCopingHash] = useState(false);
@@ -245,7 +246,11 @@ export default function VenomCard({ post, onPostUpdate }: VenomCardProps) {
   return (
     <article 
       id={`post-${post.id}`} 
-      className="border border-zinc-900 bg-zinc-950/70 rounded-lg overflow-hidden flex flex-col hover:border-emerald-500/10 hover:shadow-xl transition-all duration-300 font-sans text-zinc-300"
+      className={`border rounded-lg overflow-hidden flex flex-col hover:shadow-xl transition-all duration-300 font-sans text-zinc-300 ${
+        highlighted 
+          ? 'border-emerald-500/50 bg-emerald-950/10 shadow-[0_0_20px_rgba(16,185,129,0.15)] ring-1 ring-emerald-500/30' 
+          : 'border-zinc-900 bg-zinc-950/70 hover:border-emerald-500/10'
+      }`}
     >
       
       {/* Top Meta Info Header */}
@@ -264,6 +269,14 @@ export default function VenomCard({ post, onPostUpdate }: VenomCardProps) {
             {post.type === 'qa' && <HelpCircle className="w-2.5 h-2.5 text-zinc-500" />}
             {post.type.toUpperCase()}
           </span>
+          {highlighted && (
+            <>
+              <span className="text-zinc-800">|</span>
+              <span className="bg-emerald-500 text-zinc-950 px-1.5 py-0.5 rounded uppercase text-[8px] font-black tracking-wider animate-pulse flex items-center gap-1">
+                Target Match
+              </span>
+            </>
+          )}
         </div>
 
         {/* Post Verification Display */}

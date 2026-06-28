@@ -53,6 +53,7 @@ export default function App() {
   const [currentPath, setCurrentPath] = useState(window.location.pathname);
   const [activeInfoModal, setActiveInfoModal] = useState<'guidelines' | 'policies' | 'tips' | null>(null);
   const [showFilterDropdown, setShowFilterDropdown] = useState(false);
+  const [highlightedPostId, setHighlightedPostId] = useState<string | null>(null);
 
   // Parse path for single post sharing
   const postMatch = currentPath.match(/^\/post\/([a-zA-Z0-9_-]+)/) || currentPath.match(/^\/venom\/([a-zA-Z0-9_-]+)/);
@@ -69,7 +70,33 @@ export default function App() {
     setCurrentPath('/');
   };
 
-  // No redirect for sharedPostId to preserve the original link in address bar for sharing!
+  // Synchronize routing and auto-decryption parameters on direct URL load
+  useEffect(() => {
+    if (sharedPostId && posts.length > 0) {
+      const foundPost = posts.find(
+        (p) => p.id === sharedPostId || p.encryptedHash === sharedPostId
+      );
+      if (foundPost) {
+        // Automatically navigate to the homepage by replacing address bar entry
+        window.history.replaceState({}, '', '/');
+        setCurrentPath('/');
+        
+        // Fill the homepage search box with that human-readable ID
+        setSearchTerm(foundPost.encryptedHash);
+        
+        // Save matched highlight pointer
+        setHighlightedPostId(foundPost.id);
+        
+        // Smoothly auto-scroll target element into view once rendered
+        setTimeout(() => {
+          const element = document.getElementById(`post-${foundPost.id}`);
+          if (element) {
+            element.scrollIntoView({ behavior: 'smooth', block: 'center' });
+          }
+        }, 800);
+      }
+    }
+  }, [sharedPostId, posts]);
 
   // Load operative local metadata & listen to location routes
   useEffect(() => {
@@ -417,12 +444,43 @@ export default function App() {
               onClick={() => {
                 setSearchTerm('');
                 setActiveCategory('all');
+                setHighlightedPostId(null);
                 handleBackToHome();
               }}
               className="flex items-center gap-2 text-[10px] font-bold uppercase tracking-wider font-mono text-emerald-400 hover:text-emerald-300 transition-colors border border-emerald-500/20 bg-emerald-500/5 hover:bg-emerald-500/10 px-4 py-1.5 rounded-md shadow-lg shadow-emerald-950/20 cursor-pointer"
             >
               <RefreshCw className="w-3 h-3 animate-pulse text-emerald-400" />
               <span>Go to Homescreen (Latest Venoms)</span>
+            </button>
+          </div>
+        )}
+
+        {/* Target post shared search highlight banner */}
+        {!sharedPostId && highlightedPostId && searchTerm && (
+          <div className="flex items-center justify-between bg-emerald-500/10 border border-emerald-500/20 rounded-xl p-4 backdrop-blur-md relative overflow-hidden">
+            <div className="absolute -top-12 -right-12 w-24 h-24 bg-emerald-500/5 rounded-full blur-xl pointer-events-none" />
+            <div className="flex items-center gap-3">
+              <span className="w-2.5 h-2.5 rounded-full bg-emerald-400 animate-pulse border border-emerald-500/30" />
+              <div>
+                <span className="text-[10px] font-mono font-bold text-emerald-400 uppercase tracking-widest block leading-none">
+                  Decrypted Shared Venom
+                </span>
+                <span className="text-[8px] text-zinc-500 uppercase tracking-tight font-mono mt-1 block">
+                  Encrypted human-readable hash match active
+                </span>
+              </div>
+            </div>
+            <button
+              onClick={() => {
+                setSearchTerm('');
+                setHighlightedPostId(null);
+                setActiveCategory('all');
+                handleBackToHome();
+              }}
+              className="flex items-center gap-1.5 text-[10px] font-mono font-bold uppercase tracking-wider text-zinc-400 hover:text-emerald-400 transition-colors bg-zinc-950 border border-zinc-900 hover:border-emerald-500/20 px-3 py-1.5 rounded cursor-pointer active:scale-95 shadow-md"
+            >
+              <ArrowLeft className="w-3.5 h-3.5 text-emerald-400" />
+              <span>Back to Home</span>
             </button>
           </div>
         )}
@@ -474,6 +532,7 @@ export default function App() {
                 <VenomCard
                   key={post.id}
                   post={post}
+                  highlighted={highlightedPostId === post.id}
                   onPostUpdate={(fields) => handlePostUpdate(post.id, fields)}
                 />
               ))}
