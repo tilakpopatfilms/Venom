@@ -31,15 +31,12 @@ export default function Header({
         
         {/* Brand Logo & Title */}
         <div className="flex items-center gap-3">
-          <div className="relative flex items-center justify-center w-9 h-9 bg-emerald-950/10 border border-emerald-500/10 hover:border-emerald-500/30 rounded-lg overflow-hidden transition-all duration-300 shadow-md shadow-emerald-950/20 group">
-            <img 
-              src="https://i.ibb.co/jkzWK6V6/14895-removebg-preview.png" 
-              alt="Venom" 
-              className="w-7 h-7 object-contain drop-shadow-[0_0_8px_rgba(16,185,129,0.35)] transition-transform duration-500 group-hover:scale-110"
-              referrerPolicy="no-referrer"
-            />
-            <div className="absolute inset-0 bg-emerald-500/5 pointer-events-none" />
-          </div>
+          <img 
+            src="https://i.ibb.co/RpqhT7QZ/14893-removebg-preview.png" 
+            alt="Venom Logo" 
+            className="w-11 h-11 object-contain select-none drop-shadow-[0_0_10px_rgba(16,185,129,0.4)] transition-transform duration-500 hover:scale-110 active:scale-95 cursor-pointer"
+            referrerPolicy="no-referrer"
+          />
           <div>
             <h1 className="text-lg font-black tracking-widest font-display text-emerald-400 select-none">
               VENOM

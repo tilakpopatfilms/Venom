@@ -35,6 +35,11 @@ async function startServer() {
     res.json({ ip });
   });
 
+  // Redirect root favicon requests to the custom favicon to guarantee tab display
+  app.get(['/favicon.ico', '/favicon.png'], (req, res) => {
+    res.redirect('https://i.ibb.co/jkzWK6V6/14895-removebg-preview.png');
+  });
+
   // Handle static assets and SPA fallback
   if (process.env.NODE_ENV !== 'production') {
     const vite = await createViteServer({
