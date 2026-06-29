@@ -62,20 +62,36 @@ export default function Header({
             </button>
             {showMenuDropdown && (
               <div className="absolute right-0 mt-2 w-44 bg-zinc-950 border border-zinc-900 rounded-md shadow-2xl z-50 py-1 text-xs font-mono text-zinc-400">
-                <button
-                  onClick={() => { onShowGuidelines(); setShowMenuDropdown(false); }}
-                  className="w-full text-left px-3.5 py-2 hover:bg-zinc-900 hover:text-emerald-400 flex items-center gap-2 cursor-pointer transition-colors"
+                <a
+                  href="/guidelines"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  onClick={() => setShowMenuDropdown(false)}
+                  className="w-full text-left px-3.5 py-2 hover:bg-zinc-900 hover:text-emerald-400 flex items-center gap-2 cursor-pointer transition-colors block"
                 >
                   <ShieldAlert className="w-3.5 h-3.5 text-emerald-500/60" />
                   <span>Guidelines</span>
-                </button>
-                <button
-                  onClick={() => { onShowPolicies(); setShowMenuDropdown(false); }}
-                  className="w-full text-left px-3.5 py-2 hover:bg-zinc-900 hover:text-emerald-400 flex items-center gap-2 cursor-pointer transition-colors"
+                </a>
+                <a
+                  href="/policies"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  onClick={() => setShowMenuDropdown(false)}
+                  className="w-full text-left px-3.5 py-2 hover:bg-zinc-900 hover:text-emerald-400 flex items-center gap-2 cursor-pointer transition-colors block"
                 >
                   <HelpCircle className="w-3.5 h-3.5 text-emerald-500/60" />
                   <span>Policies</span>
-                </button>
+                </a>
+                <a
+                  href="/report"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  onClick={() => setShowMenuDropdown(false)}
+                  className="w-full text-left px-3.5 py-2 hover:bg-zinc-900 hover:text-emerald-400 flex items-center gap-2 cursor-pointer transition-colors block"
+                >
+                  <ShieldAlert className="w-3.5 h-3.5 text-rose-500/60" />
+                  <span>Report Post</span>
+                </a>
                 <button
                   onClick={() => { onShowTips(); setShowMenuDropdown(false); }}
                   className="w-full text-left px-3.5 py-2 hover:bg-zinc-900 hover:text-emerald-400 flex items-center gap-2 cursor-pointer transition-colors"

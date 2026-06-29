@@ -22,6 +22,7 @@ import { generatePostHash } from '../utils/crypto';
 import { compressImageToBase64 } from '../utils/image';
 import { getClientIp, getDeviceDetails } from '../utils/ip';
 import { getDoc } from 'firebase/firestore';
+import { checkIpBlockStatus } from '../utils/blockChecker';
 import { motion } from 'motion/react';
 
 interface NewVenomModalProps {
@@ -189,10 +190,9 @@ export default function NewVenomModal({ onClose, onPostCreated }: NewVenomModalP
       const deviceDetails = getDeviceDetails();
 
       // Check if user is blocked by IP address before writing to firestore
-      const blockRef = doc(db, 'blockedIps', userIp);
-      const blockSnap = await getDoc(blockRef);
-      if (blockSnap.exists()) {
-        setErrorMsg('YOUR DEVICE IP HAS BEEN PERMANENTLY SUSPENDED FROM POSTING VENOMS due to violations of guidelines.');
+      const block = await checkIpBlockStatus(userIp);
+      if (block.isBlocked) {
+        setErrorMsg(`YOUR DEVICE IP HAS BEEN SUSPENDED FROM POSTING VENOMS. Status: ${block.timeLeftLabel}. Reason: ${block.reason || 'Guidelines violation'}`);
         setIsSubmitting(false);
         return;
       }

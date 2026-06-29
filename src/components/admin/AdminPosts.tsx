@@ -181,11 +181,8 @@ export const AdminPosts: React.FC<AdminPostsProps> = ({ posts, onStartEdit, onBl
                   <span className="text-zinc-800">|</span>
                   <a
                     href={`/?id=${post.encryptedHash}`}
-                    onClick={(e) => {
-                      e.preventDefault();
-                      window.history.pushState({}, '', `/?id=${post.encryptedHash}`);
-                      window.dispatchEvent(new PopStateEvent('popstate'));
-                    }}
+                    target="_blank"
+                    rel="noopener noreferrer"
                     className="text-[9px] text-emerald-400 hover:text-emerald-300 hover:underline flex items-center gap-0.5 font-bold uppercase"
                   >
                     <ExternalLink className="w-2.5 h-2.5" /> Link

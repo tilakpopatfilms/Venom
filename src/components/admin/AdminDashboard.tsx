@@ -207,6 +207,34 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ posts, onNavigat
             {/* STATS & SVG GRAPHS SECTION */}
             <AdminTelemetry posts={posts} />
 
+            {/* THREAT RAPID-RESPONSE ACCESS BAR */}
+            <div className="bg-zinc-950 border border-emerald-500/10 p-4 rounded-xl flex flex-col sm:flex-row items-center justify-between gap-4 shadow-xl relative overflow-hidden">
+              <div className="absolute top-0 right-0 w-24 h-24 bg-emerald-500/5 rounded-full blur-xl pointer-events-none" />
+              <div className="flex items-center gap-3">
+                <div className="w-8 h-8 rounded-full bg-rose-950/20 border border-rose-500/20 flex items-center justify-center text-rose-400 shrink-0">
+                  <ShieldAlert className="w-4 h-4 animate-pulse" />
+                </div>
+                <div>
+                  <span className="text-[10px] font-mono font-bold text-rose-400 uppercase tracking-widest block leading-none">
+                    Security Incident Triage Center
+                  </span>
+                  <span className="text-[9px] text-zinc-500 uppercase font-sans mt-1.5 block">
+                    Monitor user-submitted reports, content policy violations, and device-level quarantine bans.
+                  </span>
+                </div>
+              </div>
+              
+              <a
+                href="/admin/report"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="w-full sm:w-auto px-4 py-2 bg-rose-950/20 border border-rose-500/30 hover:border-rose-500 text-rose-400 text-[10px] font-bold rounded uppercase tracking-wider flex items-center justify-center gap-1.5 transition-colors shrink-0"
+              >
+                <span>Launch Threat Reports Terminal</span>
+                <ExternalLink className="w-3.5 h-3.5 text-rose-400" />
+              </a>
+            </div>
+
             {/* FIREWALL SECURITY & DATABASE EXPENDITURE GRID */}
             <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
               

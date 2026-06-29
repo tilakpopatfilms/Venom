@@ -23,6 +23,10 @@ import VenomCard from './components/VenomCard';
 import NewVenomModal from './components/NewVenomModal';
 import AdminPanel from './components/AdminPanel';
 import InfoModals from './components/InfoModals';
+import GuidelinesPage from './components/GuidelinesPage';
+import PoliciesPage from './components/PoliciesPage';
+import ReportPage from './components/ReportPage';
+import AdminReports from './components/admin/AdminReports';
 import { 
   Cpu, 
   Search,
@@ -284,6 +288,21 @@ export default function App() {
           return timeB - timeA;
         });
 
+  // Admin reports terminal route check
+  if (currentPath.startsWith('/admin/report')) {
+    return (
+      <motion.div
+        initial={{ opacity: 0, y: 15 }}
+        animate={{ opacity: 1, y: 0 }}
+        exit={{ opacity: 0, y: -15 }}
+        transition={{ duration: 0.22, ease: 'easeOut' }}
+        className="min-h-screen bg-[#030303]"
+      >
+        <AdminReports />
+      </motion.div>
+    );
+  }
+
   // Admin route check
   if (currentPath.startsWith('/admin')) {
     return (
@@ -299,6 +318,27 @@ export default function App() {
           onNavigateHome={handleBackToHome} 
         />
       </motion.div>
+    );
+  }
+
+  // Guidelines page route check
+  if (currentPath.startsWith('/guidelines')) {
+    return (
+      <GuidelinesPage onBackToHome={handleBackToHome} />
+    );
+  }
+
+  // Policies page route check
+  if (currentPath.startsWith('/policies')) {
+    return (
+      <PoliciesPage onBackToHome={handleBackToHome} />
+    );
+  }
+
+  // User report page route check
+  if (currentPath.startsWith('/report')) {
+    return (
+      <ReportPage />
     );
   }
 
