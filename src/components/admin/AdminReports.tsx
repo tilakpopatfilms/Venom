@@ -7,7 +7,22 @@ import { submitPostReport } from '../../utils/reports';
 import VenomCard from '../VenomCard';
 import { Post } from '../../types';
 
-function ReportPostPreview({ report }: { report: any }) {
+function ReportPostGroupView({
+  postId,
+  reports,
+  onDismissReport,
+  onPurgePost,
+  onBlockIp,
+  actioningId
+}: {
+  postId: string;
+  reports: any[];
+  onDismissReport: any;
+  onPurgePost: any;
+  onBlockIp: any;
+  actioningId: any;
+  key?: any;
+}) {
   const [post, setPost] = useState<Post | null>(null);
   const [loading, setLoading] = useState(true);
 
@@ -15,52 +30,179 @@ function ReportPostPreview({ report }: { report: any }) {
     let active = true;
     const fetchPost = async () => {
       try {
-        const postRef = doc(db, 'posts', report.postId);
+        const postRef = doc(db, 'posts', postId);
         const snap = await getDoc(postRef);
         if (snap.exists() && active) {
           setPost({ id: snap.id, ...snap.data() } as Post);
         } else if (active) {
-          // Reconstruct fallback from report fields
+          // Fallback to reconstructed post using the first report's post properties
+          const firstRep = reports[0] || {};
           setPost({
-            id: report.postId,
-            title: report.postTitle || '',
-            content: report.postContent || '',
-            imageUrl: report.postImageUrl || undefined,
-            type: report.postImageUrl ? 'image' : 'text',
+            id: postId,
+            title: firstRep.postTitle || '',
+            content: firstRep.postContent || '',
+            imageUrl: firstRep.postImageUrl || undefined,
+            type: firstRep.postImageUrl ? 'image' : 'text',
             category: 'reported',
             upvotesCount: 0,
             downvotesCount: 0,
             likesCount: 0,
             commentsCount: 0,
-            createdAt: report.createdAt,
-            encryptedHash: 'RECOVERED-FROM-REPORT',
-            postedFromIp: report.postedFromIp || '127.0.0.1'
+            createdAt: firstRep.createdAt,
+            encryptedHash: 'RECONSTRUCTED-FROM-REPORT',
+            postedFromIp: firstRep.postedFromIp || '127.0.0.1'
           } as Post);
         }
       } catch (err) {
-        console.error("Failed to load post for report:", err);
+        console.error("Failed to load post for group:", err);
       } finally {
         if (active) setLoading(false);
       }
     };
     fetchPost();
-    return () => {
-      active = false;
-    };
-  }, [report.postId, report.postTitle, report.postContent, report.postImageUrl, report.postedFromIp]);
+    return () => { active = false; };
+  }, [postId, reports]);
+
+  // Handle Quick Ban of Author
+  const [authorBanDays, setAuthorBanDays] = useState(15);
+  const [authorBanType, setAuthorBanType] = useState<'temporary' | 'permanent'>('temporary');
+  const [authorBanReason, setAuthorBanReason] = useState('Safety Policy Infraction detected.');
 
   if (loading) {
     return (
-      <div className="flex items-center gap-1.5 text-[10px] text-zinc-500 font-mono italic p-3 border border-zinc-900 rounded bg-zinc-950/20">
-        <RefreshCw className="w-3.5 h-3.5 animate-spin text-zinc-600" />
-        <span>Loading full threat post preview...</span>
+      <div className="flex items-center gap-1.5 text-[11px] text-zinc-500 font-mono italic p-4 border border-zinc-900 rounded-lg bg-zinc-950/20">
+        <RefreshCw className="w-4 h-4 animate-spin text-zinc-600" />
+        <span>Loading Threat Venom #{postId} and compiling active complaints...</span>
       </div>
     );
   }
 
   if (!post) return null;
 
-  return <VenomCard post={post} highlighted={true} />;
+  return (
+    <div className="border border-zinc-900 bg-[#060606] rounded-xl p-4 space-y-4 shadow-xl hover:border-zinc-850 transition-all">
+      {/* Post Group Header */}
+      <div className="flex flex-wrap items-center justify-between border-b border-zinc-900/60 pb-2.5 gap-2 text-[10px] text-zinc-500">
+        <div className="flex items-center gap-2">
+          <span className="text-emerald-400 font-black bg-emerald-950/25 px-2 py-0.5 border border-emerald-900/30 rounded text-[9px] tracking-wider uppercase">
+            TARGET VENOM: {post.id}
+          </span>
+          <span className="text-zinc-700">•</span>
+          <span className="font-bold text-rose-400 uppercase tracking-widest text-[9px] bg-rose-950/15 border border-rose-500/10 px-1.5 py-0.5 rounded">
+            {reports.length} ACTIVE COMPLAINT{reports.length > 1 ? 'S' : ''}
+          </span>
+        </div>
+        <div className="text-zinc-600 font-mono text-[9px]">
+          AUTHOR SIGNATURE IP: <strong className="text-zinc-300 font-sans">{post.postedFromIp || 'UNKNOWN'}</strong>
+        </div>
+      </div>
+
+      {/* Render matching shared-post visual preview card */}
+      <div className="space-y-1.5">
+        <span className="text-[8px] text-zinc-500 font-bold tracking-wider uppercase block">
+          SECURE MATCHING POST PREVIEW
+        </span>
+        <VenomCard post={post} highlighted={true} />
+      </div>
+
+      {/* List of Reports under this post */}
+      <div className="space-y-2.5">
+        <span className="text-[8px] text-rose-400/80 font-bold tracking-wider uppercase block">
+          INDIVIDUAL COMPLAINTS BUFFER
+        </span>
+        
+        <div className="space-y-2 max-h-[300px] overflow-y-auto pr-1">
+          {reports.map((rep) => (
+            <div 
+              key={rep.id} 
+              className="bg-rose-950/5 border border-rose-500/10 rounded-lg p-3 space-y-2 text-[10.5px]"
+            >
+              <div className="flex items-center justify-between text-[9px] text-zinc-500 border-b border-zinc-900/40 pb-1.5 flex-wrap gap-2">
+                <div className="flex items-center gap-1.5">
+                  <span className="text-rose-400 font-black tracking-wide uppercase">
+                    REASON: {rep.reason || 'General'}
+                  </span>
+                  <span>•</span>
+                  <span>REPORTER IP: <strong className="text-zinc-300 font-sans">{rep.reporterIp}</strong></span>
+                </div>
+                <span>{new Date(rep.createdAt || 0).toLocaleString()}</span>
+              </div>
+
+              {/* opinion */}
+              <div className="text-zinc-300 font-sans leading-relaxed pl-1.5 border-l border-rose-500/20 italic">
+                "{rep.opinion || '(No opinion comment left. Reason code submitted only.)'}"
+              </div>
+
+              {/* report specific action */}
+              <div className="flex items-center justify-between pt-1 border-t border-zinc-900/40 text-[9px] gap-2">
+                <span className="text-zinc-600 font-sans uppercase">REPORT ID: #{rep.id}</span>
+                <button
+                  onClick={() => onDismissReport(rep.id, postId)}
+                  disabled={actioningId === rep.id}
+                  className="px-2.5 py-1 bg-zinc-900 hover:bg-emerald-950/20 border border-zinc-800 hover:border-emerald-500/30 text-zinc-400 hover:text-emerald-400 rounded transition-all cursor-pointer font-bold uppercase flex items-center gap-1"
+                >
+                  <Check className="w-3 h-3 text-emerald-400" />
+                  <span>Dismiss This Single Complaint</span>
+                </button>
+              </div>
+            </div>
+          ))}
+        </div>
+      </div>
+
+      {/* Global Actions on this reported post group */}
+      <div className="bg-zinc-950/40 border border-zinc-900 rounded-lg p-3 flex flex-wrap items-center justify-between gap-4">
+        
+        {/* Quick Ban Config */}
+        {post.postedFromIp && (
+          <div className="flex items-center gap-2.5 flex-wrap">
+            <div className="flex items-center gap-1.5 border border-zinc-900 bg-black/40 p-1.5 rounded text-[10px]">
+              <span className="text-zinc-500 font-bold uppercase text-[8px] tracking-wider pl-1">BAN AUTHOR IP:</span>
+              <select
+                value={authorBanType}
+                onChange={(e) => setAuthorBanType(e.target.value as 'temporary' | 'permanent')}
+                className="bg-zinc-900 text-zinc-200 border-none rounded text-[10px] px-1.5 py-0.5 focus:ring-0 focus:outline-none"
+              >
+                <option value="temporary">Temporary</option>
+                <option value="permanent">Permanent</option>
+              </select>
+
+              {authorBanType === 'temporary' && (
+                <input
+                  type="number"
+                  value={authorBanDays}
+                  onChange={(e) => setAuthorBanDays(Math.max(1, parseInt(e.target.value) || 15))}
+                  className="w-12 bg-zinc-900 text-zinc-200 border-none rounded text-[10px] px-1 py-0.5 text-center focus:ring-0 focus:outline-none"
+                  min={1}
+                />
+              )}
+              {authorBanType === 'temporary' && <span className="text-zinc-500 text-[9px] pr-1">days</span>}
+            </div>
+            
+            <button
+              onClick={() => onBlockIp(post.postedFromIp!, authorBanType, authorBanDays, authorBanReason)}
+              className="px-3 py-2 bg-rose-950/15 hover:bg-rose-950/30 border border-rose-500/20 hover:border-rose-500 text-rose-400 text-[10px] font-bold rounded transition-all cursor-pointer flex items-center gap-1 uppercase"
+            >
+              <ShieldAlert className="w-3.5 h-3.5" />
+              <span>Apply Block</span>
+            </button>
+          </div>
+        )}
+
+        {/* Purge Post */}
+        <div className="ml-auto flex items-center gap-2">
+          <button
+            onClick={() => onPurgePost(reports[0]?.id || '', postId)}
+            className="px-4 py-2 bg-rose-950/20 border border-rose-950 hover:border-rose-500 hover:bg-rose-950/30 text-rose-400 hover:text-rose-300 text-[10px] font-black rounded transition-all cursor-pointer flex items-center gap-1.5 uppercase"
+            title="Purge this post from entire feed and database"
+          >
+            <Trash2 className="w-3.5 h-3.5" />
+            <span>Purge Venom Node</span>
+          </button>
+        </div>
+      </div>
+    </div>
+  );
 }
 
 export default function AdminReports() {
@@ -80,6 +222,12 @@ export default function AdminReports() {
 
   // Actions loading indicator
   const [actioningId, setActioningId] = useState<string | null>(null);
+
+  // Manual IP block form state
+  const [manualIp, setManualIp] = useState('');
+  const [manualBanType, setManualBanType] = useState<'temporary' | 'permanent'>('temporary');
+  const [manualBanDays, setManualBanDays] = useState(15);
+  const [manualBanReason, setManualBanReason] = useState('Manual policy enforcement quarantine initiated.');
 
   // Submit Threat Report State
   const [postIdToReport, setPostIdToReport] = useState('');
@@ -217,12 +365,21 @@ export default function AdminReports() {
   };
 
   // MANUAL IP BLACKLIST BLOCK
-  const handleManualBlockIp = async (ip: string, customDays = 15) => {
+  const handleManualBlockIp = async (
+    ip: string, 
+    banType: 'temporary' | 'permanent' = 'temporary', 
+    customDays: number = 15, 
+    customReason: string = ''
+  ) => {
     if (!ip) return;
     try {
       const blockRef = doc(db, 'blockedIps', ip);
-      const exp = new Date();
-      exp.setDate(exp.getDate() + customDays);
+      let expiresAtStr: string | null = null;
+      if (banType === 'temporary') {
+        const exp = new Date();
+        exp.setDate(exp.getDate() + customDays);
+        expiresAtStr = exp.toISOString();
+      }
 
       await setDoc(blockRef, {
         ip,
@@ -230,12 +387,12 @@ export default function AdminReports() {
         blockCount: 1,
         totalReports: 0,
         blockedAt: new Date().toISOString(),
-        expiresAt: exp.toISOString(),
-        blockType: customDays === 15 ? '15days' : '30days',
-        reason: `Manual administrative ban initiated from report console (${customDays} Days).`
+        expiresAt: expiresAtStr,
+        blockType: banType === 'permanent' ? 'permanent' : `${customDays}days`,
+        reason: customReason || `Manual administrative ban initiated from report console (${banType === 'permanent' ? 'Permanent' : `${customDays} Days`}).`
       }, { merge: true });
 
-      alert(`IP ${ip} blocked successfully for ${customDays} days.`);
+      alert(`IP ${ip} blocked successfully (${banType === 'permanent' ? 'Permanently' : `for ${customDays} days`}).`);
     } catch (err) {
       console.error("IP block failed:", err);
       alert("Failed to block IP.");
@@ -566,114 +723,126 @@ export default function AdminReports() {
             </div>
 
             {/* TAB CONTENT: ACTIVE REPORTS */}
-            {activeTab === 'reports' && (
-              <div className="space-y-4">
-                <div className="flex items-center justify-between">
-                  <span className="text-[10px] text-zinc-500 font-mono uppercase font-bold tracking-widest">
-                    VENOM THREAT REPORT FEEDBACK ({reports.length} SYSTEM ENTRIES)
-                  </span>
-                </div>
+            {activeTab === 'reports' && (() => {
+              // Group reports by post ID
+              const groupedReports: { [postId: string]: any[] } = {};
+              reports.forEach((rep) => {
+                if (!groupedReports[rep.postId]) {
+                  groupedReports[rep.postId] = [];
+                }
+                groupedReports[rep.postId].push(rep);
+              });
 
-                {isLoadingReports ? (
-                  <div className="text-center py-12 text-xs text-zinc-600 flex items-center justify-center gap-2">
-                    <RefreshCw className="w-4 h-4 animate-spin text-emerald-500" />
-                    <span>Synchronizing active database complaints...</span>
+              return (
+                <div className="space-y-5">
+                  <div className="flex flex-col md:flex-row md:items-center justify-between gap-3">
+                    <span className="text-[10px] text-zinc-500 font-mono uppercase font-bold tracking-widest">
+                      VENOM THREAT REPORT FEEDBACK ({reports.length} SYSTEM ENTRIES)
+                    </span>
+                    <span className="text-[9px] font-mono text-emerald-400 font-bold bg-emerald-950/10 border border-emerald-500/20 px-2 py-1 rounded">
+                      GROUPED BY TARGET VENOM POST
+                    </span>
                   </div>
-                ) : reports.length === 0 ? (
-                  <div className="border border-zinc-900 bg-zinc-950/20 text-center py-16 rounded-lg text-xs text-zinc-500 italic">
-                    All clear. No unresolved user complaints detected in the active buffer.
-                  </div>
-                ) : (
-                  <div className="grid grid-cols-1 gap-4">
-                    {reports.map((rep) => (
-                      <div 
-                        key={rep.id}
-                        className="bg-zinc-950 border border-zinc-900 rounded-lg p-4 space-y-3 shadow-lg hover:border-zinc-850 transition-all"
-                      >
-                        {/* Top info row */}
-                        <div className="flex flex-wrap items-center justify-between border-b border-zinc-900/60 pb-2 gap-2 text-[10px] text-zinc-500">
-                          <div className="flex items-center gap-1.5 font-mono">
-                            <span className="text-rose-400 font-black bg-rose-950/20 px-1.5 py-0.5 border border-rose-900/30 rounded text-[9px] tracking-widest uppercase">
-                              REASON: {rep.reason?.toUpperCase()}
-                            </span>
-                            <span>•</span>
-                            <span className="font-bold text-zinc-400">Post ID: {rep.postId}</span>
-                          </div>
-                          <span className="text-zinc-600 font-mono text-[9px]">
-                            REPORTED: {new Date(rep.createdAt || 0).toLocaleString()}
-                          </span>
-                        </div>
 
-                        {/* Core database explorer information view */}
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 font-mono text-[10.5px]">
-                          
-                          {/* Left column: Post data */}
-                          <div className="space-y-1.5">
-                            <span className="text-[8px] text-zinc-500 font-bold tracking-wider uppercase block">
-                              FULL THREAT POST PREVIEW
-                            </span>
-                            <ReportPostPreview report={rep} />
-                          </div>
-
-                          {/* Right column: Reporter comments */}
-                          <div className="space-y-1.5 bg-rose-950/5 p-3 rounded border border-rose-500/10 flex flex-col justify-between">
-                            <div className="space-y-1.5">
-                              <span className="text-[8px] text-rose-400/80 font-bold tracking-wider uppercase block">
-                                USER OPINION / EXPLANATORY COMPLAINT
-                              </span>
-                              <p className="text-zinc-300 font-sans text-xs italic leading-relaxed">
-                                "{rep.opinion || '(No opinion comment left. Reason submitted only.)'}"
-                              </p>
-                            </div>
-                            <div className="pt-2 text-[9px] text-zinc-500 border-t border-zinc-900/40">
-                              REPORTER SIGNATURE IP: <strong className="text-zinc-300">{rep.reporterIp}</strong>
-                            </div>
-                          </div>
-
-                        </div>
-
-                        {/* Action controllers */}
-                        <div className="flex items-center justify-end gap-2 pt-2 border-t border-zinc-900/40 font-mono text-[10px]">
-                          {/* Dismiss single report */}
-                          <button
-                            onClick={() => handleDismissReport(rep.id, rep.postId)}
-                            disabled={actioningId === rep.id}
-                            className="px-3 py-1.5 bg-zinc-900 border border-zinc-800 hover:border-emerald-500/30 text-zinc-400 hover:text-emerald-400 rounded transition-all cursor-pointer flex items-center gap-1 uppercase font-bold"
-                            title="Dismiss complaints and keep post active"
+                  {/* Always-accessible Manual IP Ban portal on top of Reports */}
+                  <div className="bg-zinc-950/60 border border-zinc-900 rounded-xl p-4 space-y-3 shadow-lg">
+                    <div className="flex items-center gap-1.5 text-[10px] text-zinc-200 font-black uppercase tracking-wider">
+                      <ShieldAlert className="w-4 h-4 text-rose-500" />
+                      <span>QUICK FIREWALL OVERRIDE (DIRECT IP/DEVICE BLOCK)</span>
+                    </div>
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-3 text-xs font-mono">
+                      <div className="space-y-1">
+                        <span className="text-[8px] uppercase text-zinc-500 font-bold tracking-wider">TARGET IP / DEVICE ADDRESS</span>
+                        <input
+                          type="text"
+                          value={manualIp}
+                          onChange={(e) => setManualIp(e.target.value)}
+                          placeholder="e.g. 154.22.99.10"
+                          className="w-full bg-zinc-900 border border-zinc-850 focus:border-rose-500/40 rounded px-2.5 py-1.5 text-zinc-300 focus:outline-none placeholder-zinc-700 text-xs"
+                        />
+                      </div>
+                      <div className="space-y-1">
+                        <span className="text-[8px] uppercase text-zinc-500 font-bold tracking-wider">BAN PROTOCOL & DURATION</span>
+                        <div className="flex gap-2">
+                          <select
+                            value={manualBanType}
+                            onChange={(e) => setManualBanType(e.target.value as any)}
+                            className="bg-zinc-900 border border-zinc-850 focus:border-rose-500/40 rounded px-2 py-1.5 text-zinc-300 focus:outline-none flex-1 text-xs"
                           >
-                            <Check className="w-3.5 h-3.5" />
-                            <span>Dismiss Report</span>
-                          </button>
-
-                          {/* Destructive post purging */}
-                          <button
-                            onClick={() => handlePurgePost(rep.id, rep.postId)}
-                            disabled={actioningId === rep.id}
-                            className="px-3 py-1.5 bg-rose-950/10 border border-rose-950/40 hover:border-rose-500 hover:bg-rose-950/20 text-rose-400 hover:text-rose-300 rounded transition-all cursor-pointer flex items-center gap-1 uppercase font-bold"
-                            title="Destructive complete post purging"
-                          >
-                            <Trash2 className="w-3.5 h-3.5" />
-                            <span>Purge Post</span>
-                          </button>
-
-                          {/* Instantly block author IP */}
-                          {rep.postedFromIp && (
-                            <button
-                              onClick={() => handleManualBlockIp(rep.postedFromIp, 15)}
-                              className="px-3 py-1.5 bg-zinc-950 border border-zinc-900 hover:border-rose-500/40 text-rose-500 hover:text-rose-400 rounded transition-all cursor-pointer flex items-center gap-1 uppercase font-bold"
-                              title="Ban Author IP for 15 Days"
-                            >
-                              <ShieldAlert className="w-3.5 h-3.5 animate-pulse" />
-                              <span>Ban Author IP (15d)</span>
-                            </button>
+                            <option value="temporary">Temporary Block</option>
+                            <option value="permanent">Permanent Block</option>
+                          </select>
+                          {manualBanType === 'temporary' && (
+                            <input
+                              type="number"
+                              value={manualBanDays}
+                              onChange={(e) => setManualBanDays(Math.max(1, parseInt(e.target.value) || 15))}
+                              placeholder="Days"
+                              className="w-14 bg-zinc-900 border border-zinc-850 focus:border-rose-500/40 rounded px-1.5 py-1 text-center text-zinc-300 focus:outline-none text-xs"
+                              min={1}
+                            />
                           )}
                         </div>
                       </div>
-                    ))}
+                      <div className="space-y-1">
+                        <span className="text-[8px] uppercase text-zinc-500 font-bold tracking-wider">BAN REASON / JUSTIFICATION</span>
+                        <div className="flex gap-2">
+                          <input
+                            type="text"
+                            value={manualBanReason}
+                            onChange={(e) => setManualBanReason(e.target.value)}
+                            placeholder="Manual policy enforcement quarantine"
+                            className="flex-1 bg-zinc-900 border border-zinc-850 focus:border-rose-500/40 rounded px-2.5 py-1.5 text-zinc-300 focus:outline-none placeholder-zinc-700 text-xs"
+                          />
+                          <button
+                            onClick={async () => {
+                              if (!manualIp.trim()) {
+                                alert("Specify a valid IP signature to enforce firewall rules.");
+                                return;
+                              }
+                              await handleManualBlockIp(manualIp, manualBanType, manualBanDays, manualBanReason);
+                              setManualIp('');
+                              setManualBanReason('Manual policy enforcement quarantine initiated.');
+                            }}
+                            className="px-3 bg-rose-950/20 hover:bg-rose-950/40 border border-rose-500/30 hover:border-rose-500 text-rose-400 font-bold uppercase rounded text-[10px] select-none shrink-0"
+                          >
+                            Enforce Ban
+                          </button>
+                        </div>
+                      </div>
+                    </div>
                   </div>
-                )}
-              </div>
-            )}
+
+                  {isLoadingReports ? (
+                    <div className="text-center py-12 text-xs text-zinc-600 flex items-center justify-center gap-2">
+                      <RefreshCw className="w-4 h-4 animate-spin text-emerald-500" />
+                      <span>Synchronizing active database complaints...</span>
+                    </div>
+                  ) : Object.keys(groupedReports).length === 0 ? (
+                    <div className="border border-zinc-900 bg-zinc-950/20 text-center py-16 rounded-xl text-xs text-zinc-500 italic space-y-3">
+                      <p>All clear. No active threat logs or reports registered against any posts.</p>
+                      <p className="text-[10px] text-zinc-600 uppercase tracking-widest font-mono not-italic font-bold">
+                        SYSTEM IS LOCKED AND HEALTHY
+                      </p>
+                    </div>
+                  ) : (
+                    <div className="space-y-6">
+                      {Object.keys(groupedReports).map((gPostId) => (
+                        <ReportPostGroupView
+                          key={gPostId}
+                          postId={gPostId}
+                          reports={groupedReports[gPostId]}
+                          onDismissReport={handleDismissReport}
+                          onPurgePost={handlePurgePost}
+                          onBlockIp={handleManualBlockIp}
+                          actioningId={actioningId}
+                        />
+                      ))}
+                    </div>
+                  )}
+                </div>
+              );
+            })()}
 
             {/* TAB CONTENT: QUARANTINE FIREWALL */}
             {activeTab === 'firewall' && (
@@ -782,7 +951,7 @@ export default function AdminReports() {
                             </button>
                           ) : (
                             <button
-                              onClick={() => handleManualBlockIp(block.ip, 15)}
+                              onClick={() => handleManualBlockIp(block.ip, 'temporary', 15)}
                               className="px-3 py-1.5 bg-zinc-900 hover:bg-zinc-850 border border-zinc-800 text-zinc-400 hover:text-zinc-200 text-[10px] font-bold rounded transition-colors uppercase tracking-wider cursor-pointer"
                               title="Restore default 15 days ban"
                             >
