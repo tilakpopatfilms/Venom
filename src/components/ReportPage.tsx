@@ -6,6 +6,7 @@ import { submitPostReport } from '../utils/reports';
 import { checkIpBlockStatus, BlockStatus } from '../utils/blockChecker';
 import { ShieldAlert, ChevronLeft, Search, Eye, AlertCircle, CheckCircle, RefreshCw, AlertTriangle, ExternalLink } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
+import VenomCard from './VenomCard';
 
 export default function ReportPage() {
   const [postId, setPostId] = useState('');
@@ -318,35 +319,14 @@ export default function ReportPage() {
 
                 {/* VERIFIED POST PREVIEW COMPACT CARD */}
                 {verifiedPost && (
-                  <div className="border border-emerald-500/20 bg-emerald-950/5 p-3 rounded-md space-y-2">
-                    <div className="flex items-center justify-between border-b border-emerald-500/10 pb-1.5">
+                  <div className="space-y-2">
+                    <div className="flex items-center justify-between border-b border-zinc-900 pb-1.5">
                       <div className="flex items-center gap-1.5 text-[8px] text-emerald-400 font-bold font-mono tracking-widest uppercase">
-                        <CheckCircle className="w-3 h-3 text-emerald-400" />
-                        <span>POST VERIFIED MATCH</span>
-                      </div>
-                      <span className="text-[9px] text-zinc-500 font-mono">#{verifiedPost.category}</span>
-                    </div>
-
-                    <div className="space-y-2 text-xs">
-                      {verifiedPost.title && (
-                        <div className="text-zinc-200 font-bold uppercase tracking-tight truncate">
-                          {verifiedPost.title}
-                        </div>
-                      )}
-                      {verifiedPost.imageUrl && (
-                        <div className="relative aspect-video w-full max-h-40 overflow-hidden rounded border border-zinc-900 bg-zinc-950 flex items-center justify-center my-1">
-                          <img 
-                            src={verifiedPost.imageUrl} 
-                            alt="Post payload" 
-                            referrerPolicy="no-referrer"
-                            className="w-full h-full object-cover"
-                          />
-                        </div>
-                      )}
-                      <div className="text-zinc-400 font-sans leading-relaxed text-[11px] line-clamp-2 italic">
-                        "{verifiedPost.content || 'Image payload only.'}"
+                        <CheckCircle className="w-3.5 h-3.5 text-emerald-400" />
+                        <span>POST SECURELY VERIFIED</span>
                       </div>
                     </div>
+                    <VenomCard post={verifiedPost} highlighted={true} />
                   </div>
                 )}
               </div>

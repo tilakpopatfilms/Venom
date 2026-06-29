@@ -4,6 +4,64 @@ import { db } from '../../firebase';
 import { ShieldAlert, Lock, Key, ChevronLeft, RefreshCw, Trash2, Check, Unlock, Clock, Plus, Minus, Server, HelpCircle, ExternalLink, Search, Eye, AlertCircle, CheckCircle, AlertTriangle } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { submitPostReport } from '../../utils/reports';
+import VenomCard from '../VenomCard';
+import { Post } from '../../types';
+
+function ReportPostPreview({ report }: { report: any }) {
+  const [post, setPost] = useState<Post | null>(null);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    let active = true;
+    const fetchPost = async () => {
+      try {
+        const postRef = doc(db, 'posts', report.postId);
+        const snap = await getDoc(postRef);
+        if (snap.exists() && active) {
+          setPost({ id: snap.id, ...snap.data() } as Post);
+        } else if (active) {
+          // Reconstruct fallback from report fields
+          setPost({
+            id: report.postId,
+            title: report.postTitle || '',
+            content: report.postContent || '',
+            imageUrl: report.postImageUrl || undefined,
+            type: report.postImageUrl ? 'image' : 'text',
+            category: 'reported',
+            upvotesCount: 0,
+            downvotesCount: 0,
+            likesCount: 0,
+            commentsCount: 0,
+            createdAt: report.createdAt,
+            encryptedHash: 'RECOVERED-FROM-REPORT',
+            postedFromIp: report.postedFromIp || '127.0.0.1'
+          } as Post);
+        }
+      } catch (err) {
+        console.error("Failed to load post for report:", err);
+      } finally {
+        if (active) setLoading(false);
+      }
+    };
+    fetchPost();
+    return () => {
+      active = false;
+    };
+  }, [report.postId, report.postTitle, report.postContent, report.postImageUrl, report.postedFromIp]);
+
+  if (loading) {
+    return (
+      <div className="flex items-center gap-1.5 text-[10px] text-zinc-500 font-mono italic p-3 border border-zinc-900 rounded bg-zinc-950/20">
+        <RefreshCw className="w-3.5 h-3.5 animate-spin text-zinc-600" />
+        <span>Loading full threat post preview...</span>
+      </div>
+    );
+  }
+
+  if (!post) return null;
+
+  return <VenomCard post={post} highlighted={true} />;
+}
 
 export default function AdminReports() {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
@@ -550,41 +608,11 @@ export default function AdminReports() {
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-4 font-mono text-[10.5px]">
                           
                           {/* Left column: Post data */}
-                          <div className="space-y-1.5 bg-zinc-900/20 p-3 rounded border border-zinc-900/60">
+                          <div className="space-y-1.5">
                             <span className="text-[8px] text-zinc-500 font-bold tracking-wider uppercase block">
-                              POST CONTENT IN DATABASE (EXPLORER DATA)
+                              FULL THREAT POST PREVIEW
                             </span>
-                            {rep.postTitle && (
-                              <div className="text-zinc-200 font-bold uppercase tracking-tight text-[11px]">
-                                {rep.postTitle}
-                              </div>
-                            )}
-                            {rep.postImageUrl && (
-                              <div className="relative aspect-video w-full max-h-36 overflow-hidden rounded border border-zinc-900 bg-zinc-950 flex items-center justify-center my-1.5">
-                                <img 
-                                  src={rep.postImageUrl} 
-                                  alt="Reported payload" 
-                                  referrerPolicy="no-referrer"
-                                  className="w-full h-full object-cover"
-                                />
-                              </div>
-                            )}
-                            <div className="text-zinc-400 font-sans leading-relaxed text-xs">
-                              "{rep.postContent || '(No content payload)'}"
-                            </div>
-                            <div className="pt-2 text-[9px] text-zinc-500 flex flex-wrap gap-2 border-t border-zinc-900/40 mt-2">
-                              <span>AUTHOR IP: <strong className="text-zinc-300">{rep.postedFromIp || '127.0.0.1'}</strong></span>
-                              <span>•</span>
-                              <a 
-                                href={`/?id=${rep.postId}`}
-                                target="_blank"
-                                rel="noopener noreferrer"
-                                className="text-emerald-400 hover:underline flex items-center gap-0.5"
-                              >
-                                <span>Preview</span>
-                                <ExternalLink className="w-2 h-2" />
-                              </a>
-                            </div>
+                            <ReportPostPreview report={rep} />
                           </div>
 
                           {/* Right column: Reporter comments */}
@@ -887,38 +915,14 @@ export default function AdminReports() {
                           initial={{ opacity: 0, y: -6 }}
                           animate={{ opacity: 1, y: 0 }}
                           exit={{ opacity: 0, y: -6 }}
-                          className="bg-emerald-950/5 border border-emerald-500/20 rounded-lg p-4 space-y-3"
+                          className="space-y-3"
                         >
                           <div className="flex items-center gap-1.5 text-emerald-400 font-bold text-[10px] uppercase">
                             <CheckCircle className="w-3.5 h-3.5" />
                             <span>POST SECURELY VERIFIED</span>
                           </div>
                           
-                          <div className="space-y-1.5 font-mono text-[11px] leading-relaxed">
-                            {verifiedPost.title && (
-                              <div className="text-zinc-200 font-bold uppercase tracking-wide">
-                                {verifiedPost.title}
-                              </div>
-                            )}
-                            {verifiedPost.imageUrl && (
-                              <div className="relative aspect-video w-full max-h-48 overflow-hidden rounded border border-zinc-900 bg-zinc-950 flex items-center justify-center my-1.5">
-                                <img 
-                                  src={verifiedPost.imageUrl} 
-                                  alt="Post payload" 
-                                  referrerPolicy="no-referrer"
-                                  className="w-full h-full object-cover"
-                                />
-                              </div>
-                            )}
-                            <p className="text-zinc-400 font-sans text-xs italic bg-zinc-950/40 p-2.5 rounded border border-zinc-900/60 leading-relaxed">
-                              "{verifiedPost.content || '(Image payload or Empty description)'}"
-                            </p>
-                            <div className="flex flex-wrap gap-2 text-[9px] text-zinc-500 pt-1 border-t border-zinc-900/40">
-                              <span>CATEGORY: <strong className="text-zinc-300 uppercase">{verifiedPost.category || 'general'}</strong></span>
-                              <span>•</span>
-                              <span>AUTHOR IP: <strong className="text-zinc-300">{verifiedPost.postedFromIp || '127.0.0.1'}</strong></span>
-                            </div>
-                          </div>
+                          <VenomCard post={verifiedPost} highlighted={true} />
                         </motion.div>
                       )}
                     </AnimatePresence>

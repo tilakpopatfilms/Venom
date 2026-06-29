@@ -33,6 +33,8 @@ export async function submitPostReport(
   const reportRef = doc(db, 'reports', reportId);
 
   const result = await runTransaction(db, async (transaction) => {
+    // === READ OPERATIONS FIRST ===
+
     // 1. Verify if the report has already been filed from this IP for this post
     const reportSnap = await transaction.get(reportRef);
     if (reportSnap.exists()) {
@@ -51,37 +53,25 @@ export async function submitPostReport(
     }
 
     const authorIp = postData.postedFromIp || "";
+
+    // 3. Read author IP blocks if available
+    let authorBlockSnap = null;
+    let authorBlockRef = null;
+    if (authorIp) {
+      authorBlockRef = doc(db, 'blockedIps', authorIp);
+      authorBlockSnap = await transaction.get(authorBlockRef);
+    }
+
+    // === ALL READS DONE. NOW EXECUTE BUSINESS LOGIC ===
+
     const currentReports = (postData.reportsCount || 0) + 1;
     const shouldDelete = currentReports >= 10;
 
-    // 3. Log the report entry
-    transaction.set(reportRef, {
-      id: reportId,
-      postId,
-      reason,
-      opinion: opinion.trim(),
-      reporterIp,
-      createdAt: new Date().toISOString(),
-      postTitle: postData.title || "",
-      postContent: postData.content || "",
-      postImageUrl: postData.imageUrl || "",
-      postedFromIp: authorIp,
-    });
-
-    // 4. Update the post's report counters
-    transaction.update(postRef, {
-      reportsCount: currentReports,
-      isDeleted: shouldDelete ? true : (postData.isDeleted || false)
-    });
-
     let blockTriggered = false;
     let blockTypeLabel = '';
+    let blockDataToSet = null;
 
-    // 5. Update escalating author IP total report statistics and trigger suspensions
-    if (authorIp) {
-      const authorBlockRef = doc(db, 'blockedIps', authorIp);
-      const authorBlockSnap = await transaction.get(authorBlockRef);
-
+    if (authorIp && authorBlockRef) {
       let blockCount = 0;
       let totalReports = 0;
       let isBlocked = false;
@@ -89,7 +79,7 @@ export async function submitPostReport(
       let blockType: '15days' | '30days' | 'permanent' | null = null;
       let blockedAt: string | null = null;
 
-      if (authorBlockSnap.exists()) {
+      if (authorBlockSnap && authorBlockSnap.exists()) {
         const bd = authorBlockSnap.data();
         blockCount = bd.blockCount || 0;
         totalReports = bd.totalReports || 0;
@@ -132,7 +122,7 @@ export async function submitPostReport(
         blockTriggered = true;
       }
 
-      transaction.set(authorBlockRef, {
+      blockDataToSet = {
         ip: authorIp,
         isBlocked,
         blockCount,
@@ -142,8 +132,35 @@ export async function submitPostReport(
         blockType,
         reason: blockTriggered 
           ? `System Automated Enforcement: Accumulated 50 total security reports across posts. Level ${blockCount} security protocol activated.` 
-          : (authorBlockSnap.exists() ? (authorBlockSnap.data().reason || 'Accumulated user complaints.') : 'Accumulated user complaints.')
-      }, { merge: true });
+          : ((authorBlockSnap && authorBlockSnap.exists()) ? (authorBlockSnap.data().reason || 'Accumulated user complaints.') : 'Accumulated user complaints.')
+      };
+    }
+
+    // === WRITE OPERATIONS AT THE VERY END ===
+
+    // 1. Log the report entry
+    transaction.set(reportRef, {
+      id: reportId,
+      postId,
+      reason,
+      opinion: opinion.trim(),
+      reporterIp,
+      createdAt: new Date().toISOString(),
+      postTitle: postData.title || "",
+      postContent: postData.content || "",
+      postImageUrl: postData.imageUrl || "",
+      postedFromIp: authorIp,
+    });
+
+    // 2. Update the post's report counters
+    transaction.update(postRef, {
+      reportsCount: currentReports,
+      isDeleted: shouldDelete ? true : (postData.isDeleted || false)
+    });
+
+    // 3. Set the blocked IP status if needed
+    if (authorBlockRef && blockDataToSet) {
+      transaction.set(authorBlockRef, blockDataToSet, { merge: true });
     }
 
     return {
