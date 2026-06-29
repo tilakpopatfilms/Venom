@@ -148,19 +148,66 @@ export default function App() {
     return () => window.removeEventListener('popstate', handleLocationChange);
   }, []);
 
-  // Check client IP and retrieve block status on boot
+  const [blockedIpAddresses, setBlockedIpAddresses] = useState<string[]>([]);
+
+  // Listen to the complete list of blocked IP addresses in real-time to filter posts dynamically
   useEffect(() => {
-    const fetchBlockInfo = async () => {
+    if (!db) return;
+    const q = query(collection(db, 'blockedIps'), where('isBlocked', '==', true));
+    const unsubscribe = onSnapshot(
+      q,
+      (snapshot) => {
+        const ips = snapshot.docs.map((docSnap) => docSnap.id);
+        setBlockedIpAddresses(ips);
+      },
+      (error) => {
+        console.error('Error listening to blocked IPs:', error);
+      }
+    );
+    return () => unsubscribe();
+  }, []);
+
+  // Check client IP and listen to its block status in real-time
+  useEffect(() => {
+    if (!db) return;
+    let unsubscribe: () => void = () => {};
+
+    const setupBlockSubscription = async () => {
       try {
         const ip = await getClientIp();
         setUserIp(ip);
-        const status = await checkIpBlockStatus(ip);
-        setBlockStatus(status);
+
+        const blockRef = doc(db, 'blockedIps', ip);
+        unsubscribe = onSnapshot(
+          blockRef,
+          async (snap) => {
+            if (snap.exists()) {
+              const data = snap.data();
+              if (data.isBlocked) {
+                // Fetch full parsed status (which computes remaining duration label)
+                const status = await checkIpBlockStatus(ip);
+                setBlockStatus(status);
+                setShowQuarantineModal(true);
+              } else {
+                setBlockStatus({ isBlocked: false });
+                setShowQuarantineModal(false);
+              }
+            } else {
+              setBlockStatus({ isBlocked: false });
+              setShowQuarantineModal(false);
+            }
+          },
+          (error) => {
+            console.error('Error in IP block status listener:', error);
+          }
+        );
       } catch (err) {
-        console.error('Failed to retrieve or verify client IP block status:', err);
+        console.error('Failed to retrieve client IP block status:', err);
       }
     };
-    fetchBlockInfo();
+
+    setupBlockSubscription();
+    return () => unsubscribe();
   }, []);
 
   // Fetch posts in real-time from Firestore
@@ -268,28 +315,39 @@ export default function App() {
   };
 
   // Perform client-side category filtering, search queries, and ranking
-  const filteredPosts = (sharedPostId || sharedHashId)
-    ? posts.filter((post) => {
+  const filteredPosts = posts
+    .filter((post) => {
+      // 1. Never show deleted posts
+      if (post.isDeleted) return false;
+      
+      // 2. Never show posts from blocked IPs
+      if (post.postedFromIp && blockedIpAddresses.includes(post.postedFromIp)) return false;
+
+      return true;
+    })
+    .filter((post) => {
+      if (sharedPostId || sharedHashId) {
         const targetId = sharedPostId || sharedHashId;
         return post.id === targetId || post.encryptedHash === targetId;
-      })
-    : posts
-        .filter((post) => {
-          if (activeCategory !== 'all' && post.category !== activeCategory) {
-            return false;
-          }
-          if (searchTerm.trim() !== '') {
-            const term = searchTerm.toLowerCase();
-            const titleMatch = post.title?.toLowerCase().includes(term);
-            const contentMatch = post.content?.toLowerCase().includes(term);
-            const categoryMatch = post.category?.toLowerCase().includes(term);
-            const idMatch = post.id?.toLowerCase().includes(term);
-            const hashMatch = post.encryptedHash?.toLowerCase().includes(term);
-            return titleMatch || contentMatch || categoryMatch || idMatch || hashMatch;
-          }
-          return true;
-        })
-        .sort((a, b) => {
+      }
+      
+      if (activeCategory !== 'all' && post.category !== activeCategory) {
+        return false;
+      }
+      
+      if (searchTerm.trim() !== '') {
+        const term = searchTerm.toLowerCase();
+        const titleMatch = post.title?.toLowerCase().includes(term);
+        const contentMatch = post.content?.toLowerCase().includes(term);
+        const categoryMatch = post.category?.toLowerCase().includes(term);
+        const idMatch = post.id?.toLowerCase().includes(term);
+        const hashMatch = post.encryptedHash?.toLowerCase().includes(term);
+        return titleMatch || contentMatch || categoryMatch || idMatch || hashMatch;
+      }
+      
+      return true;
+    })
+    .sort((a, b) => {
           if (sortBy === 'upvotes') {
             const voteScoreA = (a.upvotesCount || 0) - (a.downvotesCount || 0);
             const voteScoreB = (b.upvotesCount || 0) - (b.downvotesCount || 0);
@@ -395,6 +453,32 @@ export default function App() {
       {/* Centered Instagram-style Feed Layout */}
       <main className="flex-1 max-w-2xl w-full mx-auto px-4 py-6 space-y-5 relative z-10">
         
+        {/* Persistent IP Quarantine Warning Banner */}
+        {blockStatus?.isBlocked && (
+          <motion.div 
+            initial={{ opacity: 0, y: -10 }}
+            animate={{ opacity: 1, y: 0 }}
+            onClick={() => setShowQuarantineModal(true)}
+            className="flex items-center justify-between bg-rose-500/10 border border-rose-500/20 hover:border-rose-500/40 rounded-xl p-4 backdrop-blur-md relative overflow-hidden cursor-pointer select-none group transition-all"
+          >
+            <div className="absolute -top-12 -right-12 w-24 h-24 bg-rose-500/5 rounded-full blur-xl pointer-events-none" />
+            <div className="flex items-center gap-3">
+              <span className="w-2.5 h-2.5 rounded-full bg-rose-500 animate-pulse border border-rose-500/30 shrink-0" />
+              <div>
+                <span className="text-[10px] font-mono font-bold text-rose-400 uppercase tracking-widest block leading-none">
+                  ⚠️ DEVICE IP UNDER QUARANTINE ({blockStatus.timeLeftLabel || 'PERMANENT'})
+                </span>
+                <span className="text-[8px] text-zinc-400 uppercase tracking-tight mt-1.5 block font-mono leading-relaxed">
+                  WRITE CLEARANCE SUSPENDED: {blockStatus.reason || 'Guidelines violation'}. CLICK TO INSPECT EVIDENCE.
+                </span>
+              </div>
+            </div>
+            <span className="text-[9px] font-mono font-bold uppercase tracking-wider text-rose-400 group-hover:underline shrink-0 pl-2">
+              View Notice
+            </span>
+          </motion.div>
+        )}
+
         {/* Shared Post Header Banner */}
         {(sharedPostId || sharedHashId) ? (
           <div className="flex items-center justify-between bg-emerald-500/10 border border-emerald-500/20 rounded-xl p-4 backdrop-blur-md relative overflow-hidden">

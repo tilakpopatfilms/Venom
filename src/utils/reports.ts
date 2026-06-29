@@ -132,7 +132,15 @@ export async function submitPostReport(
         blockType,
         reason: blockTriggered 
           ? `System Automated Enforcement: Accumulated 50 total security reports across posts. Level ${blockCount} security protocol activated.` 
-          : ((authorBlockSnap && authorBlockSnap.exists()) ? (authorBlockSnap.data().reason || 'Accumulated user complaints.') : 'Accumulated user complaints.')
+          : ((authorBlockSnap && authorBlockSnap.exists()) ? (authorBlockSnap.data().reason || 'Accumulated user complaints.') : 'Accumulated user complaints.'),
+        ...(blockTriggered ? {
+          triggerPostId: postId,
+          triggerPostTitle: postData.title || "",
+          triggerPostContent: postData.content || "",
+          triggerPostImageUrl: postData.imageUrl || "",
+          reportReason: reason || "",
+          reportOpinion: opinion || ""
+        } : {})
       };
     }
 

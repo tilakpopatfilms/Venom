@@ -96,6 +96,48 @@ export default function QuarantineNoticeModal({ blockStatus, userIp, onClose }: 
           </div>
         </div>
 
+        {/* Triggering Post Preview */}
+        {blockStatus.triggerPostId && (
+          <div className="space-y-2 border border-rose-500/15 bg-rose-950/5 rounded-lg p-3 text-[10px]">
+            <span className="text-[8px] uppercase text-rose-400 font-bold tracking-wider block">
+              TRIGGERING OFFENSE PREVIEW
+            </span>
+            <div className="space-y-1 font-sans">
+              {blockStatus.triggerPostTitle && (
+                <div className="text-zinc-200 font-bold uppercase tracking-tight text-[10px] font-mono">
+                  {blockStatus.triggerPostTitle}
+                </div>
+              )}
+              {blockStatus.triggerPostContent && (
+                <p className="text-zinc-400 italic leading-relaxed text-[10px]">
+                  "{blockStatus.triggerPostContent}"
+                </p>
+              )}
+              {blockStatus.triggerPostImageUrl && (
+                <div className="relative aspect-video w-full max-h-24 overflow-hidden rounded border border-zinc-900 bg-zinc-950 flex items-center justify-center my-1.5">
+                  <img 
+                    src={blockStatus.triggerPostImageUrl} 
+                    alt="Triggering Content Payload" 
+                    referrerPolicy="no-referrer"
+                    className="w-full h-full object-cover"
+                  />
+                </div>
+              )}
+            </div>
+            {blockStatus.reportReason && (
+              <div className="pt-2 border-t border-zinc-900/40 text-[9px] font-mono text-zinc-500 flex flex-wrap items-center gap-1.5">
+                <span>COMPLAINT TYPE: <strong className="text-rose-400 uppercase">{blockStatus.reportReason}</strong></span>
+                {blockStatus.reportOpinion && (
+                  <>
+                    <span>•</span>
+                    <span className="text-zinc-400 font-sans italic">"{blockStatus.reportOpinion}"</span>
+                  </>
+                )}
+              </div>
+            )}
+          </div>
+        )}
+
         {/* Permissions list */}
         <div className="space-y-2">
           <span className="text-[8px] uppercase text-zinc-500 block font-bold tracking-wider">

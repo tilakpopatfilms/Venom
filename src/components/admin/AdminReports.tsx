@@ -102,7 +102,7 @@ function ReportPostGroupView({
         <span className="text-[8px] text-zinc-500 font-bold tracking-wider uppercase block">
           SECURE MATCHING POST PREVIEW
         </span>
-        <VenomCard post={post} highlighted={true} />
+        <VenomCard post={post} highlighted={true} isBlocked={true} />
       </div>
 
       {/* List of Reports under this post */}
@@ -180,7 +180,14 @@ function ReportPostGroupView({
             </div>
             
             <button
-              onClick={() => onBlockIp(post.postedFromIp!, authorBanType, authorBanDays, authorBanReason)}
+              onClick={() => onBlockIp(
+                post.postedFromIp!, 
+                authorBanType, 
+                authorBanDays, 
+                authorBanReason,
+                { id: post.id, title: post.title, content: post.content, imageUrl: post.imageUrl },
+                reports[0] ? { reason: reports[0].reason, opinion: reports[0].opinion } : undefined
+              )}
               className="px-3 py-2 bg-rose-950/15 hover:bg-rose-950/30 border border-rose-500/20 hover:border-rose-500 text-rose-400 text-[10px] font-bold rounded transition-all cursor-pointer flex items-center gap-1 uppercase"
             >
               <ShieldAlert className="w-3.5 h-3.5" />
@@ -369,7 +376,9 @@ export default function AdminReports() {
     ip: string, 
     banType: 'temporary' | 'permanent' = 'temporary', 
     customDays: number = 15, 
-    customReason: string = ''
+    customReason: string = '',
+    postDetails?: { id: string; title: string; content: string; imageUrl?: string },
+    reportDetails?: { reason: string; opinion: string }
   ) => {
     if (!ip) return;
     try {
@@ -381,7 +390,7 @@ export default function AdminReports() {
         expiresAtStr = exp.toISOString();
       }
 
-      await setDoc(blockRef, {
+      const payload: any = {
         ip,
         isBlocked: true,
         blockCount: 1,
@@ -390,7 +399,20 @@ export default function AdminReports() {
         expiresAt: expiresAtStr,
         blockType: banType === 'permanent' ? 'permanent' : `${customDays}days`,
         reason: customReason || `Manual administrative ban initiated from report console (${banType === 'permanent' ? 'Permanent' : `${customDays} Days`}).`
-      }, { merge: true });
+      };
+
+      if (postDetails) {
+        payload.triggerPostId = postDetails.id || '';
+        payload.triggerPostTitle = postDetails.title || '';
+        payload.triggerPostContent = postDetails.content || '';
+        payload.triggerPostImageUrl = postDetails.imageUrl || '';
+      }
+      if (reportDetails) {
+        payload.reportReason = reportDetails.reason || '';
+        payload.reportOpinion = reportDetails.opinion || '';
+      }
+
+      await setDoc(blockRef, payload, { merge: true });
 
       alert(`IP ${ip} blocked successfully (${banType === 'permanent' ? 'Permanently' : `for ${customDays} days`}).`);
     } catch (err) {

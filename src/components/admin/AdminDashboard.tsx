@@ -75,7 +75,13 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ posts, onNavigat
     try {
       const blockRef = doc(db, 'blockedIps', ip);
       await setDoc(blockRef, {
+        ip,
+        isBlocked: true,
+        blockCount: 1,
+        totalReports: 0,
         blockedAt: new Date().toISOString(),
+        expiresAt: null,
+        blockType: 'permanent',
         reason: 'Community Guidelines Violation (Admin Enforced)'
       });
       alert(`IP Address ${ip} has been successfully blacklisted and suspended.`);

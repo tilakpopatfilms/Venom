@@ -78,7 +78,13 @@ export const AdminSecurity: React.FC = () => {
     try {
       const blockRef = doc(db, 'blockedIps', cleanIp);
       await setDoc(blockRef, {
+        ip: cleanIp,
+        isBlocked: true,
+        blockCount: 1,
+        totalReports: 0,
         blockedAt: new Date().toISOString(),
+        expiresAt: null,
+        blockType: 'permanent',
         reason: 'Community Guidelines Violation (Admin Enforced)'
       });
       setNewIpToBlock('');

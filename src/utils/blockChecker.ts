@@ -4,11 +4,17 @@ import { db } from '../firebase';
 export interface BlockStatus {
   isBlocked: boolean;
   timeLeftLabel?: string;
-  blockType?: '15days' | '30days' | 'permanent';
+  blockType?: '15days' | '30days' | 'permanent' | string;
   reason?: string;
   expiresAt?: string;
   blockCount?: number;
   totalReports?: number;
+  triggerPostId?: string;
+  triggerPostTitle?: string;
+  triggerPostContent?: string;
+  triggerPostImageUrl?: string;
+  reportReason?: string;
+  reportOpinion?: string;
 }
 
 /**
@@ -61,7 +67,13 @@ export async function checkIpBlockStatus(ip: string): Promise<BlockStatus> {
           reason: data.reason,
           expiresAt: data.expiresAt,
           blockCount: data.blockCount,
-          totalReports: data.totalReports
+          totalReports: data.totalReports,
+          triggerPostId: data.triggerPostId,
+          triggerPostTitle: data.triggerPostTitle,
+          triggerPostContent: data.triggerPostContent,
+          triggerPostImageUrl: data.triggerPostImageUrl,
+          reportReason: data.reportReason,
+          reportOpinion: data.reportOpinion,
         };
       }
     } else {
@@ -72,7 +84,13 @@ export async function checkIpBlockStatus(ip: string): Promise<BlockStatus> {
         blockType: 'permanent',
         reason: data.reason,
         blockCount: data.blockCount,
-        totalReports: data.totalReports
+        totalReports: data.totalReports,
+        triggerPostId: data.triggerPostId,
+        triggerPostTitle: data.triggerPostTitle,
+        triggerPostContent: data.triggerPostContent,
+        triggerPostImageUrl: data.triggerPostImageUrl,
+        reportReason: data.reportReason,
+        reportOpinion: data.reportOpinion,
       };
     }
   } catch (error) {
