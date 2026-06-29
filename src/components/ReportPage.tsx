@@ -327,10 +327,20 @@ export default function ReportPage() {
                       <span className="text-[9px] text-zinc-500 font-mono">#{verifiedPost.category}</span>
                     </div>
 
-                    <div className="space-y-1 text-xs">
+                    <div className="space-y-2 text-xs">
                       {verifiedPost.title && (
                         <div className="text-zinc-200 font-bold uppercase tracking-tight truncate">
                           {verifiedPost.title}
+                        </div>
+                      )}
+                      {verifiedPost.imageUrl && (
+                        <div className="relative aspect-video w-full max-h-40 overflow-hidden rounded border border-zinc-900 bg-zinc-950 flex items-center justify-center my-1">
+                          <img 
+                            src={verifiedPost.imageUrl} 
+                            alt="Post payload" 
+                            referrerPolicy="no-referrer"
+                            className="w-full h-full object-cover"
+                          />
                         </div>
                       )}
                       <div className="text-zinc-400 font-sans leading-relaxed text-[11px] line-clamp-2 italic">

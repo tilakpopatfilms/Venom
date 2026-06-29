@@ -559,6 +559,16 @@ export default function AdminReports() {
                                 {rep.postTitle}
                               </div>
                             )}
+                            {rep.postImageUrl && (
+                              <div className="relative aspect-video w-full max-h-36 overflow-hidden rounded border border-zinc-900 bg-zinc-950 flex items-center justify-center my-1.5">
+                                <img 
+                                  src={rep.postImageUrl} 
+                                  alt="Reported payload" 
+                                  referrerPolicy="no-referrer"
+                                  className="w-full h-full object-cover"
+                                />
+                              </div>
+                            )}
                             <div className="text-zinc-400 font-sans leading-relaxed text-xs">
                               "{rep.postContent || '(No content payload)'}"
                             </div>
@@ -888,6 +898,16 @@ export default function AdminReports() {
                             {verifiedPost.title && (
                               <div className="text-zinc-200 font-bold uppercase tracking-wide">
                                 {verifiedPost.title}
+                              </div>
+                            )}
+                            {verifiedPost.imageUrl && (
+                              <div className="relative aspect-video w-full max-h-48 overflow-hidden rounded border border-zinc-900 bg-zinc-950 flex items-center justify-center my-1.5">
+                                <img 
+                                  src={verifiedPost.imageUrl} 
+                                  alt="Post payload" 
+                                  referrerPolicy="no-referrer"
+                                  className="w-full h-full object-cover"
+                                />
                               </div>
                             )}
                             <p className="text-zinc-400 font-sans text-xs italic bg-zinc-950/40 p-2.5 rounded border border-zinc-900/60 leading-relaxed">

@@ -64,6 +64,7 @@ export async function submitPostReport(
       createdAt: new Date().toISOString(),
       postTitle: postData.title || "",
       postContent: postData.content || "",
+      postImageUrl: postData.imageUrl || "",
       postedFromIp: authorIp,
     });
 
