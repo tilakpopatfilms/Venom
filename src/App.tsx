@@ -44,6 +44,8 @@ import {
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { getOperativeID } from './utils/crypto';
+import { checkIpBlockStatus, BlockStatus } from './utils/blockChecker';
+import QuarantineNoticeModal from './components/QuarantineNoticeModal';
 
 export default function App() {
   const [posts, setPosts] = useState<Post[]>([]);
@@ -60,6 +62,9 @@ export default function App() {
   const [activeInfoModal, setActiveInfoModal] = useState<'guidelines' | 'policies' | 'tips' | null>(null);
   const [showFilterDropdown, setShowFilterDropdown] = useState(false);
   const [highlightedPostId, setHighlightedPostId] = useState<string | null>(null);
+  const [blockStatus, setBlockStatus] = useState<BlockStatus | null>(null);
+  const [userIp, setUserIp] = useState<string>('');
+  const [showQuarantineModal, setShowQuarantineModal] = useState(false);
 
   // Parse path for single post sharing
   const postMatch = currentPath.match(/^\/post\/([a-zA-Z0-9_-]+)/) || currentPath.match(/^\/venom\/([a-zA-Z0-9_-]+)/);
@@ -67,6 +72,14 @@ export default function App() {
 
   const urlParams = new URLSearchParams(window.location.search);
   const sharedHashId = urlParams.get('id');
+
+  const handleNewPostClick = () => {
+    if (blockStatus?.isBlocked) {
+      setShowQuarantineModal(true);
+    } else {
+      setShowNewPostModal(true);
+    }
+  };
 
   // Direct navigation functions that synchronously sync browser history and React state
   const handleNavigateAdmin = () => {
@@ -133,6 +146,21 @@ export default function App() {
     };
     window.addEventListener('popstate', handleLocationChange);
     return () => window.removeEventListener('popstate', handleLocationChange);
+  }, []);
+
+  // Check client IP and retrieve block status on boot
+  useEffect(() => {
+    const fetchBlockInfo = async () => {
+      try {
+        const ip = await getClientIp();
+        setUserIp(ip);
+        const status = await checkIpBlockStatus(ip);
+        setBlockStatus(status);
+      } catch (err) {
+        console.error('Failed to retrieve or verify client IP block status:', err);
+      }
+    };
+    fetchBlockInfo();
   }, []);
 
   // Fetch posts in real-time from Firestore
@@ -356,7 +384,7 @@ export default function App() {
 
       {/* Main Header Component */}
       <Header
-        onNewPostClick={() => setShowNewPostModal(true)}
+        onNewPostClick={handleNewPostClick}
         onRefresh={handleRefresh}
         isRefreshing={isRefreshing}
         onShowGuidelines={() => setActiveInfoModal('guidelines')}
@@ -628,7 +656,7 @@ export default function App() {
                 </button>
               ) : (
                 <button
-                  onClick={() => setShowNewPostModal(true)}
+                  onClick={handleNewPostClick}
                   className="px-4 py-2 bg-emerald-500 hover:bg-emerald-400 text-zinc-950 text-xs font-bold rounded transition-all cursor-pointer"
                 >
                   + Create the First Post
@@ -655,6 +683,8 @@ export default function App() {
                       post={post}
                       highlighted={highlightedPostId === post.id}
                       onPostUpdate={(fields) => handlePostUpdate(post.id, fields)}
+                      isBlocked={blockStatus?.isBlocked || false}
+                      onBlockedActionTriggered={() => setShowQuarantineModal(true)}
                     />
                   </motion.div>
                 ))}
@@ -670,6 +700,14 @@ export default function App() {
         <NewVenomModal 
           onClose={() => setShowNewPostModal(false)} 
           onPostCreated={handleRefresh}
+        />
+      )}
+
+      {showQuarantineModal && blockStatus && (
+        <QuarantineNoticeModal 
+          blockStatus={blockStatus}
+          userIp={userIp}
+          onClose={() => setShowQuarantineModal(false)}
         />
       )}
 

@@ -7,6 +7,8 @@ export interface BlockStatus {
   blockType?: '15days' | '30days' | 'permanent';
   reason?: string;
   expiresAt?: string;
+  blockCount?: number;
+  totalReports?: number;
 }
 
 /**
@@ -57,7 +59,9 @@ export async function checkIpBlockStatus(ip: string): Promise<BlockStatus> {
           timeLeftLabel: label,
           blockType: data.blockType,
           reason: data.reason,
-          expiresAt: data.expiresAt
+          expiresAt: data.expiresAt,
+          blockCount: data.blockCount,
+          totalReports: data.totalReports
         };
       }
     } else {
@@ -66,7 +70,9 @@ export async function checkIpBlockStatus(ip: string): Promise<BlockStatus> {
         isBlocked: true,
         timeLeftLabel: 'Permanent Ban',
         blockType: 'permanent',
-        reason: data.reason
+        reason: data.reason,
+        blockCount: data.blockCount,
+        totalReports: data.totalReports
       };
     }
   } catch (error) {

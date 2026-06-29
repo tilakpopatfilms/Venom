@@ -1,8 +1,9 @@
 import React, { useState, useEffect } from 'react';
-import { collection, doc, deleteDoc, updateDoc, setDoc, getDoc, onSnapshot, query, orderBy } from 'firebase/firestore';
+import { collection, doc, deleteDoc, updateDoc, setDoc, getDoc, onSnapshot, query, orderBy, where, getDocs, limit } from 'firebase/firestore';
 import { db } from '../../firebase';
-import { ShieldAlert, Lock, Key, ChevronLeft, RefreshCw, Trash2, Check, Unlock, Clock, Plus, Minus, Server, HelpCircle, ExternalLink } from 'lucide-react';
+import { ShieldAlert, Lock, Key, ChevronLeft, RefreshCw, Trash2, Check, Unlock, Clock, Plus, Minus, Server, HelpCircle, ExternalLink, Search, Eye, AlertCircle, CheckCircle, AlertTriangle } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
+import { submitPostReport } from '../../utils/reports';
 
 export default function AdminReports() {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
@@ -10,8 +11,8 @@ export default function AdminReports() {
   const [password, setPassword] = useState('');
   const [loginError, setLoginError] = useState<string | null>(null);
 
-  // Active view tab state: 'reports' | 'firewall'
-  const [activeTab, setActiveTab] = useState<'reports' | 'firewall'>('reports');
+  // Active view tab state: 'reports' | 'firewall' | 'submit-report'
+  const [activeTab, setActiveTab] = useState<'reports' | 'firewall' | 'submit-report'>('reports');
 
   // Real-time Firestore data
   const [reports, setReports] = useState<any[]>([]);
@@ -21,6 +22,17 @@ export default function AdminReports() {
 
   // Actions loading indicator
   const [actioningId, setActioningId] = useState<string | null>(null);
+
+  // Submit Threat Report State
+  const [postIdToReport, setPostIdToReport] = useState('');
+  const [selectedReason, setSelectedReason] = useState('');
+  const [opinion, setOpinion] = useState('');
+  const [isVerifying, setIsVerifying] = useState(false);
+  const [verifiedPost, setVerifiedPost] = useState<any | null>(null);
+  const [verificationError, setVerificationError] = useState<string | null>(null);
+  const [isSubmittingReport, setIsSubmittingReport] = useState(false);
+  const [submitError, setSubmitError] = useState<string | null>(null);
+  const [submitResult, setSubmitResult] = useState<any | null>(null);
 
   // Check login session on load
   useEffect(() => {
@@ -226,6 +238,88 @@ export default function AdminReports() {
     }
   };
 
+  // VERIFY POST (ADMIN REPORT WORKFLOW)
+  const handleVerifyPostAdmin = async () => {
+    const targetId = postIdToReport.trim();
+    if (!targetId) return;
+
+    setIsVerifying(true);
+    setVerificationError(null);
+    setVerifiedPost(null);
+
+    try {
+      // 1. Try matching directly by Document ID
+      const postRef = doc(db, 'posts', targetId);
+      const snap = await getDoc(postRef);
+
+      let matchedDoc: any = null;
+      if (snap.exists()) {
+        matchedDoc = { id: snap.id, ...snap.data() };
+      } else {
+        // 2. Try querying by encryptedHash field
+        const q = query(collection(db, 'posts'), where('encryptedHash', '==', targetId), limit(1));
+        const querySnap = await getDocs(q);
+        if (!querySnap.empty) {
+          const docSnap = querySnap.docs[0];
+          matchedDoc = { id: docSnap.id, ...docSnap.data() };
+        }
+      }
+
+      if (matchedDoc) {
+        if (matchedDoc.isDeleted) {
+          setVerificationError('This post is already deleted or suspended by system moderation.');
+        } else {
+          setVerifiedPost(matchedDoc);
+        }
+      } else {
+        setVerificationError('Post ID not found. Verify character spelling and try again.');
+      }
+    } catch (err: any) {
+      console.error('Admin post verification failed:', err);
+      setVerificationError(`Verification failed: ${err.message || err}`);
+    } finally {
+      setIsVerifying(false);
+    }
+  };
+
+  // SUBMIT REPORT (ADMIN REPORT WORKFLOW)
+  const handleSubmitReportAdmin = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!verifiedPost) {
+      setSubmitError('You must verify a valid Post ID before submitting a security report.');
+      return;
+    }
+    if (!selectedReason) {
+      setSubmitError('Selectable reason of report is compulsory.');
+      return;
+    }
+
+    setIsSubmittingReport(true);
+    setSubmitError(null);
+
+    try {
+      // Use system/admin reporter tag or fallback to a dedicated identifier
+      const reporterIp = 'ADMIN_CONSOLE';
+      const result = await submitPostReport(verifiedPost.id, selectedReason, opinion, reporterIp);
+      setSubmitResult(result);
+    } catch (err: any) {
+      console.error('Admin report submission failed:', err);
+      setSubmitError(err.message || 'Failed to submit security report.');
+    } finally {
+      setIsSubmittingReport(false);
+    }
+  };
+
+  const resetReportFormAdmin = () => {
+    setPostIdToReport('');
+    setSelectedReason('');
+    setOpinion('');
+    setVerifiedPost(null);
+    setVerificationError(null);
+    setSubmitError(null);
+    setSubmitResult(null);
+  };
+
   // FORMAT TIME REMAINING
   const formatTimeLeft = (expiresAtStr?: string) => {
     if (!expiresAtStr) return 'Permanent';
@@ -397,6 +491,19 @@ export default function AdminReports() {
                 }`}
               >
                 Quarantined & Blocked IPs ({blockedIps.filter(b => b.isBlocked).length})
+              </button>
+              <button
+                onClick={() => {
+                  setActiveTab('submit-report');
+                  resetReportFormAdmin();
+                }}
+                className={`px-4 py-2 border-t-2 font-bold tracking-wider uppercase transition-colors cursor-pointer ${
+                  activeTab === 'submit-report' 
+                    ? 'border-emerald-500 bg-zinc-950 text-emerald-400' 
+                    : 'border-transparent text-zinc-500 hover:text-zinc-300'
+                }`}
+              >
+                Submit Threat Report
               </button>
             </div>
 
@@ -638,7 +745,7 @@ export default function AdminReports() {
                           ) : (
                             <button
                               onClick={() => handleManualBlockIp(block.ip, 15)}
-                              className="px-3 py-1.5 bg-zinc-900 hover:bg-zinc-800 border border-zinc-800 text-zinc-400 hover:text-zinc-200 text-[10px] font-bold rounded transition-colors uppercase tracking-wider cursor-pointer"
+                              className="px-3 py-1.5 bg-zinc-900 hover:bg-zinc-850 border border-zinc-800 text-zinc-400 hover:text-zinc-200 text-[10px] font-bold rounded transition-colors uppercase tracking-wider cursor-pointer"
                               title="Restore default 15 days ban"
                             >
                               Restore Block
@@ -648,6 +755,218 @@ export default function AdminReports() {
                       </div>
                     ))}
                   </div>
+                )}
+              </div>
+            )}
+
+            {/* TAB CONTENT: SUBMIT REPORT */}
+            {activeTab === 'submit-report' && (
+              <div className="space-y-6 max-w-xl mx-auto">
+                <div className="space-y-1.5 border-b border-zinc-900 pb-4">
+                  <h2 className="text-sm font-black text-white tracking-widest uppercase font-mono">
+                    ADMIN-INITIATED COMPLAINT REGISTRATION
+                  </h2>
+                  <p className="text-[9px] text-zinc-500 uppercase tracking-wider font-mono">
+                    Register a community policy violation against a specific Venom post
+                  </p>
+                </div>
+
+                {submitResult ? (
+                  /* Success Notice */
+                  <motion.div 
+                    initial={{ opacity: 0, scale: 0.98 }}
+                    animate={{ opacity: 1, scale: 1 }}
+                    className="border border-emerald-500/30 bg-emerald-950/10 p-6 rounded-xl text-center space-y-4"
+                  >
+                    <div className="w-12 h-12 rounded-full bg-emerald-950/20 border border-emerald-500/30 flex items-center justify-center text-emerald-400 mx-auto">
+                      <CheckCircle className="w-6 h-6" />
+                    </div>
+                    <div className="space-y-1 max-w-xs mx-auto">
+                      <h3 className="text-xs font-black text-zinc-100 uppercase tracking-widest">
+                        REPORT FILED SUCCESSFULLY
+                      </h3>
+                      <p className="text-[10px] text-zinc-400 font-sans leading-relaxed">
+                        The complaint has been successfully indexed. System security policies have been evaluated.
+                      </p>
+                    </div>
+
+                    {submitResult.blockTriggered && (
+                      <div className="bg-rose-950/20 border border-rose-500/20 p-3 rounded-md text-[10px] text-rose-400 text-left max-w-md mx-auto space-y-1">
+                        <span className="font-bold flex items-center gap-1">
+                          <ShieldAlert className="w-3.5 h-3.5" />
+                          AUTOMATED FIREWALL TRIGGERED
+                        </span>
+                        <p className="font-sans text-zinc-400">
+                          The author IP (<strong className="text-white">{submitResult.authorIp}</strong>) has accumulated 50+ total security reports. Writing access has been suspended.
+                        </p>
+                        <div className="pt-1.5 font-mono text-[9px] text-zinc-500">
+                          <span>EXPIRY: {submitResult.expiresAt ? new Date(submitResult.expiresAt).toLocaleString() : 'Permanent'}</span>
+                        </div>
+                      </div>
+                    )}
+
+                    <div className="pt-2">
+                      <button
+                        onClick={resetReportFormAdmin}
+                        className="px-4 py-2 bg-zinc-900 hover:bg-zinc-850 border border-zinc-850 text-zinc-300 text-[10px] font-bold rounded uppercase tracking-widest cursor-pointer font-mono"
+                      >
+                        File Another Report
+                      </button>
+                    </div>
+                  </motion.div>
+                ) : (
+                  /* Form */
+                  <form onSubmit={handleSubmitReportAdmin} className="space-y-5 text-xs font-mono">
+                    
+                    {submitError && (
+                      <div className="bg-rose-950/20 border border-rose-500/20 text-rose-400 p-3 rounded leading-relaxed border-l-2 border-l-rose-500 flex items-start gap-2">
+                        <AlertCircle className="w-4 h-4 shrink-0 mt-0.5" />
+                        <div>
+                          <strong>SUBMISSION DENIED:</strong> {submitError}
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Stage 1: Post ID Search Input */}
+                    <div className="space-y-1.5">
+                      <label className="text-[9px] uppercase text-zinc-500 block font-bold tracking-wider">
+                        STEP 1: VERIFY TARGET POST ID / ENCRYPTED HASH
+                      </label>
+                      <div className="flex gap-2">
+                        <div className="relative flex-1">
+                          <input
+                            type="text"
+                            value={postIdToReport}
+                            onChange={(e) => {
+                              setPostIdToReport(e.target.value);
+                              if (verifiedPost) setVerifiedPost(null);
+                            }}
+                            placeholder="e.g. SEC-585631-951B0D-..."
+                            className="w-full bg-zinc-950 border border-zinc-900 focus:border-emerald-500/30 rounded pl-9 pr-3 py-2 text-xs text-zinc-300 focus:outline-none placeholder-zinc-700 transition-colors uppercase"
+                            disabled={isVerifying || isSubmittingReport}
+                          />
+                          <Search className="w-3.5 h-3.5 text-zinc-700 absolute left-3 top-2.5" />
+                        </div>
+                        <button
+                          type="button"
+                          onClick={handleVerifyPostAdmin}
+                          disabled={!postIdToReport.trim() || isVerifying || isSubmittingReport}
+                          className="px-4 py-2 bg-zinc-900 hover:bg-zinc-850 border border-zinc-800 disabled:opacity-40 disabled:hover:bg-zinc-900 text-zinc-300 font-bold rounded transition-colors cursor-pointer uppercase text-[10px] flex items-center gap-1.5 select-none"
+                        >
+                          {isVerifying ? (
+                            <RefreshCw className="w-3.5 h-3.5 animate-spin text-emerald-400" />
+                          ) : (
+                            <Eye className="w-3.5 h-3.5 text-emerald-400" />
+                          )}
+                          <span>Verify</span>
+                        </button>
+                      </div>
+                      
+                      {verificationError && (
+                        <p className="text-rose-400 text-[10px] font-bold mt-1 uppercase flex items-center gap-1 leading-normal">
+                          <AlertCircle className="w-3.5 h-3.5 shrink-0" />
+                          <span>{verificationError}</span>
+                        </p>
+                      )}
+                    </div>
+
+                    {/* Verified Post Summary Panel */}
+                    <AnimatePresence>
+                      {verifiedPost && (
+                        <motion.div
+                          initial={{ opacity: 0, y: -6 }}
+                          animate={{ opacity: 1, y: 0 }}
+                          exit={{ opacity: 0, y: -6 }}
+                          className="bg-emerald-950/5 border border-emerald-500/20 rounded-lg p-4 space-y-3"
+                        >
+                          <div className="flex items-center gap-1.5 text-emerald-400 font-bold text-[10px] uppercase">
+                            <CheckCircle className="w-3.5 h-3.5" />
+                            <span>POST SECURELY VERIFIED</span>
+                          </div>
+                          
+                          <div className="space-y-1.5 font-mono text-[11px] leading-relaxed">
+                            {verifiedPost.title && (
+                              <div className="text-zinc-200 font-bold uppercase tracking-wide">
+                                {verifiedPost.title}
+                              </div>
+                            )}
+                            <p className="text-zinc-400 font-sans text-xs italic bg-zinc-950/40 p-2.5 rounded border border-zinc-900/60 leading-relaxed">
+                              "{verifiedPost.content || '(Image payload or Empty description)'}"
+                            </p>
+                            <div className="flex flex-wrap gap-2 text-[9px] text-zinc-500 pt-1 border-t border-zinc-900/40">
+                              <span>CATEGORY: <strong className="text-zinc-300 uppercase">{verifiedPost.category || 'general'}</strong></span>
+                              <span>•</span>
+                              <span>AUTHOR IP: <strong className="text-zinc-300">{verifiedPost.postedFromIp || '127.0.0.1'}</strong></span>
+                            </div>
+                          </div>
+                        </motion.div>
+                      )}
+                    </AnimatePresence>
+
+                    {/* Stage 2: compulsory reason dropdown selection */}
+                    <div className="space-y-1.5">
+                      <label className="text-[9px] uppercase text-zinc-500 block font-bold tracking-wider">
+                        STEP 2: SELECT POLICY INFRACTION CATEGORY (COMPULSORY)
+                      </label>
+                      <select
+                        value={selectedReason}
+                        onChange={(e) => setSelectedReason(e.target.value)}
+                        required
+                        disabled={!verifiedPost || isSubmittingReport}
+                        className="w-full bg-zinc-950 border border-zinc-900 focus:border-emerald-500/30 rounded px-3 py-2 text-xs text-zinc-300 focus:outline-none transition-colors disabled:opacity-40"
+                      >
+                        <option value="">-- Choose Infraction Category --</option>
+                        <option value="Terrorism">Terrorism (Incitement, violence or threats)</option>
+                        <option value="Drugs">Drugs (Illegal narcotics trafficking / promotion)</option>
+                        <option value="Doxxing">Doxxing (Leaking private personal identity datasets)</option>
+                        <option value="Harassment">Harassment (Targeted bullying / abusive slurs)</option>
+                        <option value="Sexual content">Sexual content (Adult materials / non-consensual imagery)</option>
+                        <option value="Scams">Scams (Fraudulent schemes / phishing URLs)</option>
+                        <option value="Spam">Spam (Repeated bots / promotional duplication)</option>
+                        <option value="Other">Other (General guidelines & safety violations)</option>
+                      </select>
+                    </div>
+
+                    {/* Stage 3: explanatory comment (optional option) */}
+                    <div className="space-y-1.5">
+                      <div className="flex justify-between items-center">
+                        <label className="text-[9px] uppercase text-zinc-500 block font-bold tracking-wider">
+                          STEP 3: EXPLANATORY COMPLAINT DETAIL (OPTIONAL)
+                        </label>
+                        <span className="text-[8px] text-zinc-600 font-bold font-mono uppercase bg-zinc-950 px-1.5 py-0.5 rounded border border-zinc-900">
+                          OPTIONAL
+                        </span>
+                      </div>
+                      <textarea
+                        value={opinion}
+                        onChange={(e) => setOpinion(e.target.value)}
+                        placeholder="Explain why this node violates community guidelines (max 400 chars)..."
+                        disabled={!verifiedPost || isSubmittingReport}
+                        maxLength={400}
+                        rows={4}
+                        className="w-full bg-zinc-950 border border-zinc-900 focus:border-emerald-500/30 rounded px-3 py-2 text-xs text-zinc-300 focus:outline-none placeholder-zinc-700 transition-colors disabled:opacity-40 font-sans"
+                      />
+                    </div>
+
+                    {/* Submit Button */}
+                    <button
+                      type="submit"
+                      disabled={!verifiedPost || !selectedReason || isSubmittingReport}
+                      className="w-full py-2.5 bg-rose-950/20 hover:bg-rose-950/40 disabled:opacity-30 disabled:hover:bg-rose-950/20 border border-rose-500/30 text-rose-400 font-black text-[10px] rounded transition-all uppercase tracking-widest cursor-pointer text-center flex items-center justify-center gap-1.5 shadow-lg shadow-rose-950/10"
+                    >
+                      {isSubmittingReport ? (
+                        <>
+                          <RefreshCw className="w-3.5 h-3.5 animate-spin" />
+                          <span>REGISTRATION ACTIVE...</span>
+                        </>
+                      ) : (
+                        <>
+                          <AlertTriangle className="w-3.5 h-3.5" />
+                          <span>REGISTER CONSOLE COMPLAINT</span>
+                        </>
+                      )}
+                    </button>
+                  </form>
                 )}
               </div>
             )}

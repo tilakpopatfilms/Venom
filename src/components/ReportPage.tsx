@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { doc, getDoc } from 'firebase/firestore';
+import { doc, getDoc, collection, query, where, getDocs, limit } from 'firebase/firestore';
 import { db } from '../firebase';
 import { getClientIp } from '../utils/ip';
 import { submitPostReport } from '../utils/reports';
@@ -59,15 +59,28 @@ export default function ReportPage() {
     setVerifiedPost(null);
 
     try {
+      // 1. Try directly matching by Document ID
       const postRef = doc(db, 'posts', targetId);
       const snap = await getDoc(postRef);
       
+      let matchedDoc: any = null;
       if (snap.exists()) {
-        const data = snap.data();
-        if (data.isDeleted) {
+        matchedDoc = { id: snap.id, ...snap.data() };
+      } else {
+        // 2. Try querying by encryptedHash field
+        const q = query(collection(db, 'posts'), where('encryptedHash', '==', targetId), limit(1));
+        const querySnap = await getDocs(q);
+        if (!querySnap.empty) {
+          const docSnap = querySnap.docs[0];
+          matchedDoc = { id: docSnap.id, ...docSnap.data() };
+        }
+      }
+
+      if (matchedDoc) {
+        if (matchedDoc.isDeleted) {
           setVerificationError('This post is already deleted or suspended by system moderation.');
         } else {
-          setVerifiedPost({ id: snap.id, ...data });
+          setVerifiedPost(matchedDoc);
         }
       } else {
         setVerificationError('Post ID not found. Verify character spelling and try again.');

@@ -29,9 +29,16 @@ import { motion, AnimatePresence } from 'motion/react';
 interface CommentsPaneProps {
   postId: string;
   onCommentsCountChange?: (newCount: number) => void;
+  isBlocked?: boolean;
+  onBlockedActionTriggered?: () => void;
 }
 
-export default function CommentsPane({ postId, onCommentsCountChange }: CommentsPaneProps) {
+export default function CommentsPane({ 
+  postId, 
+  onCommentsCountChange,
+  isBlocked = false,
+  onBlockedActionTriggered,
+}: CommentsPaneProps) {
   const [comments, setComments] = useState<Comment[]>([]);
   const [newCommentText, setNewCommentText] = useState('');
   const [isSubmittingComment, setIsSubmittingComment] = useState(false);
@@ -103,6 +110,10 @@ export default function CommentsPane({ postId, onCommentsCountChange }: Comments
 
   const handlePostComment = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (isBlocked) {
+      if (onBlockedActionTriggered) onBlockedActionTriggered();
+      return;
+    }
     if (!newCommentText.trim() || isSubmittingComment) return;
 
     setIsSubmittingComment(true);
@@ -136,6 +147,10 @@ export default function CommentsPane({ postId, onCommentsCountChange }: Comments
   };
 
   const handlePostReply = async (commentId: string) => {
+    if (isBlocked) {
+      if (onBlockedActionTriggered) onBlockedActionTriggered();
+      return;
+    }
     const text = replyInputs[commentId]?.trim();
     if (!text || submittingReplies[commentId]) return;
 
@@ -168,6 +183,10 @@ export default function CommentsPane({ postId, onCommentsCountChange }: Comments
   };
 
   const handleCommentLike = async (commentId: string) => {
+    if (isBlocked) {
+      if (onBlockedActionTriggered) onBlockedActionTriggered();
+      return;
+    }
     const key = `${postId}_${commentId}`;
     const liked = toggleCommentLikeStore(key);
     
@@ -184,6 +203,10 @@ export default function CommentsPane({ postId, onCommentsCountChange }: Comments
   };
 
   const handleReplyLike = async (commentId: string, replyId: string) => {
+    if (isBlocked) {
+      if (onBlockedActionTriggered) onBlockedActionTriggered();
+      return;
+    }
     const key = `${commentId}_${replyId}`;
     const liked = toggleReplyLikeStore(key);
 

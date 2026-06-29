@@ -49,6 +49,8 @@ interface VenomCardProps {
   post: Post;
   highlighted?: boolean;
   onPostUpdate?: (updatedPost: Partial<Post>) => void;
+  isBlocked?: boolean;
+  onBlockedActionTriggered?: () => void;
 }
 
 const REACTIONS = [
@@ -67,7 +69,13 @@ interface FloatingEmoji {
   delay: number;
 }
 
-export default function VenomCard({ post, highlighted = false, onPostUpdate }: VenomCardProps) {
+export default function VenomCard({ 
+  post, 
+  highlighted = false, 
+  onPostUpdate,
+  isBlocked = false,
+  onBlockedActionTriggered
+}: VenomCardProps) {
   const [showComments, setShowComments] = useState(false);
   const [isExpandingImage, setIsExpandingImage] = useState(false);
   const [isCopingHash, setIsCopingHash] = useState(false);
@@ -99,6 +107,10 @@ export default function VenomCard({ post, highlighted = false, onPostUpdate }: V
   const totalReactions = (Object.values(post.reactions || {}) as number[]).reduce((a, b) => a + b, 0);
 
   const handleLikeToggle = async () => {
+    if (isBlocked) {
+      if (onBlockedActionTriggered) onBlockedActionTriggered();
+      return;
+    }
     const isLikedNow = togglePostLikeStore(post.id);
     const incAmount = isLikedNow ? 1 : -1;
 
@@ -137,6 +149,10 @@ export default function VenomCard({ post, highlighted = false, onPostUpdate }: V
   };
 
   const handleVote = async (direction: 'up' | 'down') => {
+    if (isBlocked) {
+      if (onBlockedActionTriggered) onBlockedActionTriggered();
+      return;
+    }
     let upvoteInc = 0;
     let downvoteInc = 0;
 
@@ -203,6 +219,10 @@ export default function VenomCard({ post, highlighted = false, onPostUpdate }: V
   };
 
   const handlePollVote = async (optionIndex: number) => {
+    if (isBlocked) {
+      if (onBlockedActionTriggered) onBlockedActionTriggered();
+      return;
+    }
     if (isVotedPoll) return; // Prevent double voting
 
     setPollVotedOptionStore(post.id, optionIndex);
@@ -345,6 +365,10 @@ Use it now: https://myvenom.vercel.app`;
   };
 
   const handleReact = async (reactionKey: string) => {
+    if (isBlocked) {
+      if (onBlockedActionTriggered) onBlockedActionTriggered();
+      return;
+    }
     const oldReaction = activeReaction;
     const isRemove = oldReaction === reactionKey;
     const nextReaction = isRemove ? null : reactionKey;
@@ -812,6 +836,8 @@ Use it now: https://myvenom.vercel.app`;
             <CommentsPane 
               postId={post.id} 
               onCommentsCountChange={handleCommentsCountChange}
+              isBlocked={isBlocked}
+              onBlockedActionTriggered={onBlockedActionTriggered}
             />
           </motion.div>
         )}
