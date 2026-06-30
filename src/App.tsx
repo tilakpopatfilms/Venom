@@ -538,7 +538,6 @@ export default function App() {
         isRefreshing={isRefreshing}
         onShowGuidelines={() => setActiveInfoModal('guidelines')}
         onShowPolicies={() => setActiveInfoModal('policies')}
-        onShowTips={() => setActiveInfoModal('tips')}
       />
 
       {/* Centered Instagram-style Feed Layout */}

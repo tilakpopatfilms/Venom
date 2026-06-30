@@ -12,7 +12,6 @@ interface HeaderProps {
   isRefreshing: boolean;
   onShowGuidelines: () => void;
   onShowPolicies: () => void;
-  onShowTips: () => void;
 }
 
 export default function Header({
@@ -21,7 +20,6 @@ export default function Header({
   isRefreshing,
   onShowGuidelines,
   onShowPolicies,
-  onShowTips,
 }: HeaderProps) {
   const [showMenuDropdown, setShowMenuDropdown] = useState(false);
 
@@ -92,13 +90,6 @@ export default function Header({
                   <ShieldAlert className="w-3.5 h-3.5 text-rose-500/60" />
                   <span>Report Post</span>
                 </a>
-                <button
-                  onClick={() => { onShowTips(); setShowMenuDropdown(false); }}
-                  className="w-full text-left px-3.5 py-2 hover:bg-zinc-900 hover:text-emerald-400 flex items-center gap-2 cursor-pointer transition-colors"
-                >
-                  <BookOpen className="w-3.5 h-3.5 text-emerald-500/60" />
-                  <span>Pro Tips</span>
-                </button>
               </div>
             )}
           </div>

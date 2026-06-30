@@ -20,7 +20,7 @@ import { db, handleFirestoreError, OperationType } from '../firebase';
 import { collection, doc, setDoc, serverTimestamp } from 'firebase/firestore';
 import { generatePostHash } from '../utils/crypto';
 import { compressImageToBase64 } from '../utils/image';
-import { getClientIp, getDeviceDetails } from '../utils/ip';
+import { getClientIp, getDeviceDetails, getDeviceImei } from '../utils/ip';
 import { getDoc } from 'firebase/firestore';
 import { checkIpBlockStatus } from '../utils/blockChecker';
 import { motion } from 'motion/react';
@@ -215,6 +215,7 @@ export default function NewVenomModal({ onClose, onPostCreated }: NewVenomModalP
         encryptedHash: cipherHash,
         postedFromIp: userIp,
         postedFromDevice: deviceDetails,
+        postedFromImei: getDeviceImei(),
       };
 
       // Set imageUrl if any exists (poll, qa, text, or image type)

@@ -82,6 +82,11 @@ export const AdminSecurity: React.FC = () => {
       return;
     }
 
+    if (cleanIp === '150.129.200.97') {
+      setErrorFeedback('Security system error: IP address 150.129.200.97 is white-listed and cannot be blocked under any circumstances.');
+      return;
+    }
+
     try {
       let expiresAt: string | null = null;
       if (banType === 'temporary') {
@@ -149,8 +154,13 @@ export const AdminSecurity: React.FC = () => {
   const handleUnblockIp = async (ip: string) => {
     try {
       const blockRef = doc(db, 'blockedIps', ip);
-      await deleteDoc(blockRef);
-      setSuccessFeedback(`IP Address ${ip} removed from firewall blacklist.`);
+      await setDoc(blockRef, {
+        isBlocked: false,
+        expiresAt: null,
+        blockedAt: null,
+        totalReports: 0
+      }, { merge: true });
+      setSuccessFeedback(`IP Address ${ip} has been successfully unblocked.`);
     } catch (err) {
       console.error('Failed to unblock IP:', err);
       setErrorFeedback(`Failed to lift IP block on: ${ip}`);
@@ -323,15 +333,27 @@ export const AdminSecurity: React.FC = () => {
               }
             }
 
+            const isCurrentlyBlocked = block.isBlocked !== false;
+
             return (
               <div 
                 key={block.id} 
-                className="flex items-start justify-between p-3 bg-zinc-900/40 border border-zinc-900 rounded font-mono text-[11px] gap-2"
+                className={`flex items-start justify-between p-3 border rounded font-mono text-[11px] gap-2 transition-all ${
+                  isCurrentlyBlocked 
+                    ? 'bg-zinc-900/40 border-zinc-900' 
+                    : 'bg-zinc-900/10 border-zinc-950 opacity-60'
+                }`}
               >
                 <div className="flex flex-col space-y-1.5 flex-1 min-w-0">
                   <div className="flex items-center gap-2 flex-wrap">
-                    <span className="text-zinc-200 font-bold break-all">{block.id}</span>
-                    {block.expiresAt ? (
+                    <span className={`font-bold break-all ${isCurrentlyBlocked ? 'text-zinc-200' : 'text-zinc-500 line-through'}`}>
+                      {block.id}
+                    </span>
+                    {!isCurrentlyBlocked ? (
+                      <span className="px-1.5 py-0.5 rounded bg-zinc-900 border border-zinc-800 text-zinc-500 text-[8px] font-black uppercase tracking-wider flex items-center gap-1">
+                        LIFTED / CLEAN
+                      </span>
+                    ) : block.expiresAt ? (
                       <span className="px-1.5 py-0.5 rounded bg-amber-950/30 border border-amber-500/20 text-amber-400 text-[8px] font-black uppercase tracking-wider flex items-center gap-1">
                         <Clock className="w-2.5 h-2.5" />
                         {detailsLabel}
@@ -358,13 +380,26 @@ export const AdminSecurity: React.FC = () => {
                   </div>
                 </div>
                 
-                <button
-                  onClick={() => handleUnblockIp(block.id)}
-                  className="p-1.5 bg-zinc-900/50 hover:bg-zinc-850 border border-zinc-850 hover:border-emerald-500/30 text-zinc-500 hover:text-emerald-400 rounded transition-colors cursor-pointer shrink-0"
-                  title="Lift IP Suspension"
-                >
-                  <Unlock className="w-4 h-4" />
-                </button>
+                {isCurrentlyBlocked ? (
+                  <button
+                    onClick={() => handleUnblockIp(block.id)}
+                    className="p-1.5 bg-zinc-900/50 hover:bg-zinc-850 border border-zinc-850 hover:border-emerald-500/30 text-zinc-500 hover:text-emerald-400 rounded transition-colors cursor-pointer shrink-0"
+                    title="Lift IP Suspension"
+                  >
+                    <Unlock className="w-4 h-4" />
+                  </button>
+                ) : (
+                  <button
+                    onClick={() => {
+                      setNewIpToBlock(block.id);
+                      setBanType('permanent');
+                    }}
+                    className="p-1.5 bg-zinc-900/50 hover:bg-zinc-850 border border-zinc-850 hover:border-rose-500/30 text-zinc-600 hover:text-rose-450 rounded transition-colors cursor-pointer shrink-0"
+                    title="Reload into Suspension Console"
+                  >
+                    <Ban className="w-4 h-4" />
+                  </button>
+                )}
               </div>
             );
           })

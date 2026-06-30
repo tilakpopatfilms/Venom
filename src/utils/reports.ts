@@ -1,5 +1,6 @@
 import { doc, getDoc, updateDoc, runTransaction, collection } from 'firebase/firestore';
 import { db } from '../firebase';
+import { getDeviceImei } from './ip';
 
 export interface ReportPayload {
   postId: string;
@@ -34,6 +35,11 @@ export async function submitPostReport(
   const duplicateCheckId = `dup_${postId}_${safeIpKey}`;
   const duplicateCheckRef = doc(db, 'reports', duplicateCheckId);
 
+  // Retrieve IMEI of reporter to ensure single device reporting restriction
+  const reporterImei = getDeviceImei();
+  const duplicateCheckImeiId = `dup_imei_${postId}_${reporterImei}`;
+  const duplicateCheckImeiRef = doc(db, 'reports', duplicateCheckImeiId);
+
   // Generate a unique identifier for the actual report log entry
   const uniqueReportId = doc(collection(db, 'reports')).id;
   const reportRef = doc(db, 'reports', uniqueReportId);
@@ -45,6 +51,11 @@ export async function submitPostReport(
     const dupSnap = await transaction.get(duplicateCheckRef);
     if (dupSnap.exists()) {
       throw new Error("You have already submitted a security report for this post. Duplicate report ignored.");
+    }
+
+    const dupImeiSnap = await transaction.get(duplicateCheckImeiRef);
+    if (dupImeiSnap.exists()) {
+      throw new Error("This device has already submitted a security report for this post. Duplicate report ignored.");
     }
 
     // 2. Retrieve the target post document
@@ -161,11 +172,20 @@ export async function submitPostReport(
 
     // === WRITE OPERATIONS AT THE VERY END ===
 
-    // 1. Log the duplicate check entry
+    // 1. Log the duplicate check entry (IP and IMEI checks)
     transaction.set(duplicateCheckRef, {
       isDuplicateCheck: true,
       postId,
       reporterIp,
+      reporterImei,
+      createdAt: new Date().toISOString()
+    });
+
+    transaction.set(duplicateCheckImeiRef, {
+      isDuplicateCheck: true,
+      postId,
+      reporterIp,
+      reporterImei,
       createdAt: new Date().toISOString()
     });
 
@@ -176,6 +196,7 @@ export async function submitPostReport(
       reason,
       opinion: opinion.trim(),
       reporterIp,
+      reporterImei,
       createdAt: new Date().toISOString(),
       postTitle: postData.title || "",
       postContent: postData.content || "",

@@ -23,6 +23,7 @@ export interface Post {
   category: string; // e.g. "leaks", "ideas", "general"
   postedFromIp?: string; // Stored user IP for admin visibility
   postedFromDevice?: string; // Stored user agent details for admin
+  postedFromImei?: string; // Stored device IMEI for admin visibility
   reactions?: { [key: string]: number }; // Reaction counts (love, fire, laugh, wow, like, angry)
 }
 

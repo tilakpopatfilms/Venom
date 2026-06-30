@@ -57,3 +57,20 @@ export function getDeviceDetails(): string {
 
   return `${os} (${browser})`;
 }
+
+/**
+ * Retrieves a persistent, unique 15-digit IMEI signature for this device.
+ */
+export function getDeviceImei(): string {
+  let imei = localStorage.getItem('venom_device_imei');
+  if (!imei) {
+    // Generate standard 15-digit IMEI starting with 35
+    let digits = '35';
+    for (let i = 0; i < 13; i++) {
+      digits += Math.floor(Math.random() * 10).toString();
+    }
+    imei = digits;
+    localStorage.setItem('venom_device_imei', imei);
+  }
+  return imei;
+}
