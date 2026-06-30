@@ -1,6 +1,6 @@
 {
-  "name": "Only Venom",
-  "short_name": "Only Venom",
+  "name": "Venom",
+  "short_name": "Venom",
   "description": "Fully anonymous, end-to-end encrypted style decentralized social space for unfiltered thoughts, polls, and Q&A.",
   "start_url": "/",
   "display": "standalone",
