@@ -71,7 +71,7 @@ export default function App() {
   const sharedPostId = postMatch ? postMatch[1] : null;
 
   const urlParams = new URLSearchParams(window.location.search);
-  const sharedHashId = urlParams.get('id');
+  const sharedHashId = (currentPath.startsWith('/report') || currentPath.startsWith('/admin')) ? null : urlParams.get('id');
 
   const handleNewPostClick = () => {
     if (blockStatus?.isBlocked) {
@@ -184,8 +184,6 @@ export default function App() {
 
   // Dynamically change title, favicon, and manifest on route change for Admin PWA isolation
   useEffect(() => {
-    const isAdminRoute = currentPath.startsWith('/admin');
-    
     // Swap Favicon
     let faviconLink: HTMLLinkElement | null = document.querySelector("link[rel~='icon']");
     if (!faviconLink) {
@@ -209,13 +207,32 @@ export default function App() {
       document.getElementsByTagName('head')[0].appendChild(manifestLink);
     }
     
-    if (isAdminRoute) {
-      document.title = "Only Venom Admin Console";
+    const isAdminReportRoute = currentPath.startsWith('/admin/report') || currentPath.includes('admin/report') || currentPath.includes('reports');
+    const isAdminRoute = currentPath.startsWith('/admin');
+    const isReportRoute = currentPath.startsWith('/report');
+    const isPoliciesRoute = currentPath.startsWith('/policies');
+    const isGuidelinesRoute = currentPath.startsWith('/guidelines');
+    
+    let pageTitle = "Venom | Decentralized Anonymous Grid";
+    if (isAdminReportRoute) {
+      pageTitle = "Venom Admin Reports";
+    } else if (isAdminRoute) {
+      pageTitle = "Venom Admin Console";
+    } else if (isReportRoute) {
+      pageTitle = "Venom Security Report";
+    } else if (isPoliciesRoute) {
+      pageTitle = "Venom Policies";
+    } else if (isGuidelinesRoute) {
+      pageTitle = "Venom Guidelines";
+    }
+
+    if (isAdminRoute || isAdminReportRoute) {
+      document.title = pageTitle;
       faviconLink.href = "https://i.ibb.co/RpqhT7QZ/14893-removebg-preview.png";
       appleIconLink.href = "https://i.ibb.co/RpqhT7QZ/14893-removebg-preview.png";
       manifestLink.href = "/admin-manifest.json";
     } else {
-      document.title = "Only Venom";
+      document.title = pageTitle;
       faviconLink.href = "https://i.ibb.co/jkzWK6V6/14895-removebg-preview.png";
       appleIconLink.href = "https://i.ibb.co/jkzWK6V6/14895-removebg-preview.png";
       manifestLink.href = "/manifest.json";

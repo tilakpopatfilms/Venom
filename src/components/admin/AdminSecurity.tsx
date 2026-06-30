@@ -5,13 +5,17 @@
 
 import React, { useState, useEffect } from 'react';
 import { db } from '../../firebase';
-import { collection, doc, setDoc, deleteDoc, onSnapshot } from 'firebase/firestore';
-import { ShieldAlert, Unlock, RefreshCw } from 'lucide-react';
+import { collection, doc, setDoc, deleteDoc, onSnapshot, getDoc, query } from 'firebase/firestore';
+import { ShieldAlert, Unlock, RefreshCw, Clock, Ban } from 'lucide-react';
 import { getClientIp } from '../../utils/ip';
 
 export const AdminSecurity: React.FC = () => {
-  const [blockedIps, setBlockedIps] = useState<string[]>([]);
+  const [blockedIps, setBlockedIps] = useState<any[]>([]);
   const [newIpToBlock, setNewIpToBlock] = useState('');
+  const [banType, setBanType] = useState<'temporary' | 'permanent'>('permanent');
+  const [banDays, setBanDays] = useState('7');
+  const [triggerPostId, setTriggerPostId] = useState('');
+  const [banReason, setBanReason] = useState('Community Guidelines Violation (Admin Enforced)');
   const [isFirewallLoading, setIsFirewallLoading] = useState(false);
   const [errorFeedback, setErrorFeedback] = useState<string | null>(null);
   const [successFeedback, setSuccessFeedback] = useState<string | null>(null);
@@ -49,7 +53,10 @@ export const AdminSecurity: React.FC = () => {
     const unsubscribe = onSnapshot(
       blockedRef,
       (snapshot) => {
-        const ips = snapshot.docs.map(d => d.id);
+        const ips = snapshot.docs.map(d => ({
+          id: d.id,
+          ...d.data()
+        }));
         setBlockedIps(ips);
         setIsFirewallLoading(false);
       },
@@ -76,6 +83,42 @@ export const AdminSecurity: React.FC = () => {
     }
 
     try {
+      let expiresAt: string | null = null;
+      if (banType === 'temporary') {
+        const days = parseInt(banDays, 10);
+        if (isNaN(days) || days <= 0) {
+          setErrorFeedback('Please specify a valid positive number of days.');
+          return;
+        }
+        const expDate = new Date();
+        expDate.setDate(expDate.getDate() + days);
+        expiresAt = expDate.toISOString();
+      }
+
+      let triggerPostTitle = '';
+      let triggerPostContent = '';
+      let triggerPostImageUrl = '';
+
+      if (triggerPostId.trim()) {
+        try {
+          const postRef = doc(db, 'posts', triggerPostId.trim());
+          const postSnap = await getDoc(postRef);
+          if (postSnap.exists()) {
+            const pData = postSnap.data();
+            triggerPostTitle = pData.title || '';
+            triggerPostContent = pData.content || '';
+            triggerPostImageUrl = pData.imageUrl || '';
+          } else {
+            // Check if input is maybe an encrypted hash
+            const postsColl = collection(db, 'posts');
+            const q = query(collection(db, 'posts')); // simple snapshot query
+            // We can fetch later or just fallback
+          }
+        } catch (postErr) {
+          console.error('Failed to pre-resolve post details:', postErr);
+        }
+      }
+
       const blockRef = doc(db, 'blockedIps', cleanIp);
       await setDoc(blockRef, {
         ip: cleanIp,
@@ -83,12 +126,19 @@ export const AdminSecurity: React.FC = () => {
         blockCount: 1,
         totalReports: 0,
         blockedAt: new Date().toISOString(),
-        expiresAt: null,
-        blockType: 'permanent',
-        reason: 'Community Guidelines Violation (Admin Enforced)'
+        expiresAt,
+        blockType: banType === 'temporary' ? `${banDays}days` : 'permanent',
+        reason: banReason.trim() || 'Community Guidelines Violation (Admin Enforced)',
+        triggerPostId: triggerPostId.trim() || null,
+        triggerPostTitle: triggerPostTitle || null,
+        triggerPostContent: triggerPostContent || null,
+        triggerPostImageUrl: triggerPostImageUrl || null
       });
+
       setNewIpToBlock('');
-      setSuccessFeedback(`IP Address ${cleanIp} blacklisted successfully.`);
+      setTriggerPostId('');
+      setBanReason('Community Guidelines Violation (Admin Enforced)');
+      setSuccessFeedback(`IP Address ${cleanIp} blacklisted successfully (${banType === 'temporary' ? `Temporary: ${banDays} days` : 'Permanent'}).`);
     } catch (err) {
       console.error('Failed to block IP:', err);
       setErrorFeedback('Firewall error. Deploy Firestore rules or verify client permissions.');
@@ -120,7 +170,7 @@ export const AdminSecurity: React.FC = () => {
           <span className="text-zinc-500 uppercase tracking-wide">Your IP Signature:</span>
           <div className="flex items-center gap-1.5">
             <span className="text-zinc-300 font-bold">{adminIp}</span>
-            {blockedIps.includes(adminIp) ? (
+            {blockedIps.some(b => b.id === adminIp) ? (
               <span className="px-1.5 py-0.5 rounded bg-rose-950/40 border border-rose-500/25 text-rose-400 font-bold uppercase text-[7px] tracking-widest animate-pulse">
                 Blocked
               </span>
@@ -147,25 +197,103 @@ export const AdminSecurity: React.FC = () => {
       )}
 
       {/* Block IP Form */}
-      <form onSubmit={handleBlockIpSubmit} className="flex gap-2 mb-4">
-        <input
-          type="text"
-          value={newIpToBlock}
-          onChange={(e) => setNewIpToBlock(e.target.value)}
-          placeholder="Suspend IP (e.g. 192.168.1.1)"
-          required
-          className="flex-1 bg-zinc-900 border border-zinc-850 focus:border-emerald-500/30 rounded px-2.5 py-1.5 text-xs text-zinc-300 focus:outline-none placeholder-zinc-700 transition-colors font-mono"
-        />
+      <form onSubmit={handleBlockIpSubmit} className="space-y-3 mb-6 bg-zinc-900/10 p-3.5 border border-zinc-900 rounded-lg">
+        <span className="text-[9px] uppercase text-zinc-500 block font-bold tracking-wider font-mono">
+          MANUALLY DEPLOY IP BLOCK
+        </span>
+        
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+          <div className="space-y-1">
+            <label className="text-[9px] text-zinc-500 uppercase tracking-wider block">Target IP Address</label>
+            <input
+              type="text"
+              value={newIpToBlock}
+              onChange={(e) => setNewIpToBlock(e.target.value)}
+              placeholder="e.g. 192.168.1.1"
+              required
+              className="w-full bg-zinc-900 border border-zinc-850 focus:border-emerald-500/30 rounded px-2.5 py-1.5 text-xs text-zinc-300 focus:outline-none placeholder-zinc-700 transition-colors font-mono"
+            />
+          </div>
+
+          <div className="space-y-1">
+            <label className="text-[9px] text-zinc-500 uppercase tracking-wider block">Ban Duration Type</label>
+            <div className="flex gap-2">
+              <button
+                type="button"
+                onClick={() => setBanType('permanent')}
+                className={`flex-1 py-1.5 px-3 rounded text-[10px] font-bold uppercase font-mono border tracking-wider transition-all cursor-pointer ${
+                  banType === 'permanent'
+                    ? 'bg-rose-950/30 border-rose-500/50 text-rose-400'
+                    : 'bg-zinc-900/50 border-zinc-850 text-zinc-500 hover:text-zinc-400'
+                }`}
+              >
+                Permanent
+              </button>
+              <button
+                type="button"
+                onClick={() => setBanType('temporary')}
+                className={`flex-1 py-1.5 px-3 rounded text-[10px] font-bold uppercase font-mono border tracking-wider transition-all cursor-pointer ${
+                  banType === 'temporary'
+                    ? 'bg-amber-950/20 border-amber-500/40 text-amber-400'
+                    : 'bg-zinc-900/50 border-zinc-850 text-zinc-500 hover:text-zinc-400'
+                }`}
+              >
+                Temporary
+              </button>
+            </div>
+          </div>
+        </div>
+
+        {banType === 'temporary' && (
+          <div className="space-y-1">
+            <label className="text-[9px] text-zinc-500 uppercase tracking-wider block">Custom Duration (Days)</label>
+            <input
+              type="number"
+              min="1"
+              value={banDays}
+              onChange={(e) => setBanDays(e.target.value)}
+              placeholder="Number of days (e.g. 3, 7, 30)"
+              required={banType === 'temporary'}
+              className="w-full bg-zinc-900 border border-zinc-850 focus:border-emerald-500/30 rounded px-2.5 py-1.5 text-xs text-zinc-300 focus:outline-none placeholder-zinc-700 transition-colors font-mono"
+            />
+          </div>
+        )}
+
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+          <div className="space-y-1">
+            <label className="text-[9px] text-zinc-500 uppercase tracking-wider block">Triggering Post ID (Optional)</label>
+            <input
+              type="text"
+              value={triggerPostId}
+              onChange={(e) => setTriggerPostId(e.target.value)}
+              placeholder="e.g. j7xSdhHwk3v"
+              className="w-full bg-zinc-900 border border-zinc-850 focus:border-emerald-500/30 rounded px-2.5 py-1.5 text-xs text-zinc-300 focus:outline-none placeholder-zinc-700 transition-colors font-mono"
+            />
+          </div>
+
+          <div className="space-y-1">
+            <label className="text-[9px] text-zinc-500 uppercase tracking-wider block">Reason For Suspension</label>
+            <input
+              type="text"
+              value={banReason}
+              onChange={(e) => setBanReason(e.target.value)}
+              placeholder="Violation description"
+              required
+              className="w-full bg-zinc-900 border border-zinc-850 focus:border-emerald-500/30 rounded px-2.5 py-1.5 text-xs text-zinc-300 focus:outline-none placeholder-zinc-700 transition-colors font-sans"
+            />
+          </div>
+        </div>
+
         <button
           type="submit"
-          className="px-4 py-1.5 bg-rose-950/20 border border-rose-500/30 hover:border-rose-500 hover:bg-rose-950/40 text-rose-400 text-[10px] font-bold rounded transition-colors uppercase font-mono tracking-wider cursor-pointer"
+          className="w-full py-2 bg-rose-950/20 border border-rose-500/30 hover:border-rose-500 hover:bg-rose-950/40 text-rose-400 text-[10px] font-bold rounded transition-colors uppercase font-mono tracking-widest cursor-pointer"
         >
-          Suspend
+          Execute IP Suspension
         </button>
       </form>
 
       {/* Firewall List */}
-      <div className="space-y-2 max-h-[280px] overflow-y-auto scrollbar-thin">
+      <div className="space-y-2 max-h-[350px] overflow-y-auto scrollbar-thin">
         <span className="text-[9px] uppercase text-zinc-500 block font-bold mb-2 tracking-wider font-mono">
           BLACKLISTED IP ADDRESSES ({blockedIps.length})
         </span>
@@ -180,26 +308,66 @@ export const AdminSecurity: React.FC = () => {
             Firewall is clean. No device bans issued.
           </div>
         ) : (
-          blockedIps.map((ip) => (
-            <div 
-              key={ip} 
-              className="flex items-center justify-between p-2.5 bg-zinc-900/40 border border-zinc-900 rounded font-mono text-[11px]"
-            >
-              <div className="flex flex-col">
-                <span className="text-zinc-200 font-bold">{ip}</span>
-                <span className="text-[8px] text-rose-500/80 mt-0.5 flex items-center gap-1">
-                  <ShieldAlert className="w-2.5 h-2.5" /> BLOCKED DEPLOYMENT
-                </span>
-              </div>
-              <button
-                onClick={() => handleUnblockIp(ip)}
-                className="p-1 hover:bg-zinc-850 border border-zinc-850 hover:border-emerald-500/30 text-zinc-500 hover:text-emerald-400 rounded transition-colors cursor-pointer"
-                title="Unban IP Address"
+          blockedIps.map((block) => {
+            let detailsLabel = 'Permanent Ban';
+            if (block.expiresAt) {
+              const expires = new Date(block.expiresAt);
+              const now = new Date();
+              if (now >= expires) {
+                detailsLabel = 'Expired';
+              } else {
+                const diffMs = expires.getTime() - now.getTime();
+                const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24));
+                const diffHours = Math.floor((diffMs % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
+                detailsLabel = `Expires in ${diffDays}d ${diffHours}h`;
+              }
+            }
+
+            return (
+              <div 
+                key={block.id} 
+                className="flex items-start justify-between p-3 bg-zinc-900/40 border border-zinc-900 rounded font-mono text-[11px] gap-2"
               >
-                <Unlock className="w-3.5 h-3.5" />
-              </button>
-            </div>
-          ))
+                <div className="flex flex-col space-y-1.5 flex-1 min-w-0">
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <span className="text-zinc-200 font-bold break-all">{block.id}</span>
+                    {block.expiresAt ? (
+                      <span className="px-1.5 py-0.5 rounded bg-amber-950/30 border border-amber-500/20 text-amber-400 text-[8px] font-black uppercase tracking-wider flex items-center gap-1">
+                        <Clock className="w-2.5 h-2.5" />
+                        {detailsLabel}
+                      </span>
+                    ) : (
+                      <span className="px-1.5 py-0.5 rounded bg-rose-950/30 border border-rose-500/20 text-rose-400 text-[8px] font-black uppercase tracking-wider flex items-center gap-1">
+                        <Ban className="w-2.5 h-2.5" />
+                        Permanent
+                      </span>
+                    )}
+                  </div>
+                  
+                  <div className="space-y-0.5 font-sans text-[10px] text-zinc-400 leading-normal">
+                    <div>
+                      <span className="text-zinc-500 font-mono text-[8px] uppercase font-bold mr-1">Reason:</span>
+                      <span className="italic">"{block.reason || 'Guidelines Violation'}"</span>
+                    </div>
+                    {block.triggerPostId && (
+                      <div className="text-[9.5px]">
+                        <span className="text-zinc-500 font-mono text-[8px] uppercase font-bold mr-1">Trigger Post ID:</span>
+                        <code className="text-rose-400 font-mono text-[9px] bg-rose-950/10 px-1 py-0.2 rounded">{block.triggerPostId}</code>
+                      </div>
+                    )}
+                  </div>
+                </div>
+                
+                <button
+                  onClick={() => handleUnblockIp(block.id)}
+                  className="p-1.5 bg-zinc-900/50 hover:bg-zinc-850 border border-zinc-850 hover:border-emerald-500/30 text-zinc-500 hover:text-emerald-400 rounded transition-colors cursor-pointer shrink-0"
+                  title="Lift IP Suspension"
+                >
+                  <Unlock className="w-4 h-4" />
+                </button>
+              </div>
+            );
+          })
         )}
       </div>
 
