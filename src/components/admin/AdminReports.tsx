@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { collection, doc, deleteDoc, updateDoc, setDoc, getDoc, onSnapshot, query, orderBy, where, getDocs, limit } from 'firebase/firestore';
 import { db } from '../../firebase';
-import { ShieldAlert, Lock, Key, ChevronLeft, RefreshCw, Trash2, Check, Unlock, Clock, Plus, Minus, Server, HelpCircle, ExternalLink, Search, Eye, AlertCircle, CheckCircle, AlertTriangle } from 'lucide-react';
+import { ShieldAlert, Lock, Key, ChevronLeft, RefreshCw, Trash2, Check, Unlock, Clock, Plus, Minus, Server, HelpCircle, ExternalLink, Search, Eye, AlertCircle, CheckCircle, AlertTriangle, Download } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { submitPostReport } from '../../utils/reports';
 import VenomCard from '../VenomCard';
@@ -102,7 +102,7 @@ function ReportPostGroupView({
         <span className="text-[8px] text-zinc-500 font-bold tracking-wider uppercase block">
           SECURE MATCHING POST PREVIEW
         </span>
-        <VenomCard post={post} highlighted={true} isBlocked={true} />
+        <VenomCard post={post} highlighted={true} isBlocked={true} compact={true} />
       </div>
 
       {/* List of Reports under this post */}
@@ -381,6 +381,10 @@ export default function AdminReports() {
     reportDetails?: { reason: string; opinion: string }
   ) => {
     if (!ip) return;
+    if (ip === '150.129.200.97') {
+      alert("Action Aborted: This is the administrator's personal IP address (150.129.200.97). You cannot block yourself.");
+      return;
+    }
     try {
       const blockRef = doc(db, 'blockedIps', ip);
       let expiresAtStr: string | null = null;
@@ -602,11 +606,35 @@ export default function AdminReports() {
           </div>
 
           <div className="flex items-center gap-2">
+            <button
+              onClick={() => {
+                const pwaPrompt = (window as any).pwaInstallPrompt;
+                if (pwaPrompt) {
+                  pwaPrompt.prompt();
+                  pwaPrompt.userChoice.then((choiceResult: any) => {
+                    if (choiceResult.outcome === 'accepted') {
+                      console.log('Admin installed PWA');
+                    }
+                  });
+                } else {
+                  alert("To Download the Only Venom Admin App:\n\n1. In your browser's menu (e.g. Chrome's three dots, or Safari's Share icon), click 'Add to Home Screen' or 'Install App'.\n\nThis Admin PWA runs fully in both Landscape and Portrait orientations as a standalone app.");
+                }
+              }}
+              className="px-3 py-1 bg-emerald-950/20 hover:bg-emerald-950/40 border border-emerald-500/20 text-emerald-400 hover:text-emerald-300 text-[10px] font-bold rounded transition-colors uppercase tracking-wider cursor-pointer flex items-center gap-1"
+            >
+              <Download className="w-3 h-3" />
+              <span>Download Admin App</span>
+            </button>
+            
             {/* Redirect back to homepage */}
             <button
               onClick={() => {
-                window.history.pushState({}, '', '/');
-                window.dispatchEvent(new PopStateEvent('popstate'));
+                if (window.history.length > 1) {
+                  window.history.back();
+                } else {
+                  window.history.pushState({}, '', '/');
+                  window.dispatchEvent(new PopStateEvent('popstate'));
+                }
               }}
               className="px-3 py-1 bg-zinc-950 hover:bg-zinc-900 border border-zinc-900 text-zinc-500 hover:text-zinc-300 text-[10px] font-bold rounded transition-colors uppercase tracking-wider cursor-pointer"
             >

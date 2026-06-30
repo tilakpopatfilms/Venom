@@ -54,10 +54,10 @@ export async function submitPostReport(
 
     const authorIp = postData.postedFromIp || "";
 
-    // 3. Read author IP blocks if available
+    // 3. Read author IP blocks if available - only if author is not the reporter
     let authorBlockSnap = null;
     let authorBlockRef = null;
-    if (authorIp) {
+    if (authorIp && authorIp !== reporterIp) {
       authorBlockRef = doc(db, 'blockedIps', authorIp);
       authorBlockSnap = await transaction.get(authorBlockRef);
     }
@@ -71,7 +71,7 @@ export async function submitPostReport(
     let blockTypeLabel = '';
     let blockDataToSet = null;
 
-    if (authorIp && authorBlockRef) {
+    if (authorIp && authorBlockRef && authorIp !== reporterIp) {
       let blockCount = 0;
       let totalReports = 0;
       let isBlocked = false;
@@ -90,8 +90,8 @@ export async function submitPostReport(
       // Add to running report totals for this user's IP
       totalReports += 1;
 
-      // Check if cumulative report threshold is violated
-      if (totalReports >= 50) {
+      // Check if cumulative report threshold is violated (never block admin's personal IP automatically)
+      if (totalReports >= 50 && authorIp !== '150.129.200.97') {
         blockCount += 1; // Elevate offense history tier
         isBlocked = true;
         blockedAt = new Date().toISOString();

@@ -91,11 +91,12 @@ export default function App() {
   };
 
   const handleBackToHome = () => {
-    window.history.pushState({}, '', '/');
-    setCurrentPath(
-      window.location.pathname +
-      window.location.search
-    );
+    if (window.history.length > 1) {
+      window.history.back();
+    } else {
+      window.history.pushState({}, '', '/');
+      setCurrentPath('/');
+    }
   };
 
   // Synchronize routing and auto-decryption parameters on direct URL load
@@ -147,6 +148,58 @@ export default function App() {
     window.addEventListener('popstate', handleLocationChange);
     return () => window.removeEventListener('popstate', handleLocationChange);
   }, []);
+
+  // Listen to beforeinstallprompt event to support manual PWA installations from admin console
+  useEffect(() => {
+    const handleBeforeInstallPrompt = (e: any) => {
+      e.preventDefault();
+      (window as any).pwaInstallPrompt = e;
+    };
+    window.addEventListener('beforeinstallprompt', handleBeforeInstallPrompt);
+    return () => {
+      window.removeEventListener('beforeinstallprompt', handleBeforeInstallPrompt);
+    };
+  }, []);
+
+  // Dynamically change title, favicon, and manifest on route change for Admin PWA isolation
+  useEffect(() => {
+    const isAdminRoute = currentPath.startsWith('/admin');
+    
+    // Swap Favicon
+    let faviconLink: HTMLLinkElement | null = document.querySelector("link[rel~='icon']");
+    if (!faviconLink) {
+      faviconLink = document.createElement('link');
+      faviconLink.rel = 'icon';
+      document.getElementsByTagName('head')[0].appendChild(faviconLink);
+    }
+
+    let appleIconLink: HTMLLinkElement | null = document.querySelector("link[rel='apple-touch-icon']");
+    if (!appleIconLink) {
+      appleIconLink = document.createElement('link');
+      appleIconLink.rel = 'apple-touch-icon';
+      document.getElementsByTagName('head')[0].appendChild(appleIconLink);
+    }
+
+    // Swap PWA Manifest
+    let manifestLink: HTMLLinkElement | null = document.querySelector("link[rel='manifest']");
+    if (!manifestLink) {
+      manifestLink = document.createElement('link');
+      manifestLink.rel = 'manifest';
+      document.getElementsByTagName('head')[0].appendChild(manifestLink);
+    }
+    
+    if (isAdminRoute) {
+      document.title = "Only Venom Admin Console";
+      faviconLink.href = "https://i.ibb.co/RpqhT7QZ/14893-removebg-preview.png";
+      appleIconLink.href = "https://i.ibb.co/RpqhT7QZ/14893-removebg-preview.png";
+      manifestLink.href = "/admin-manifest.json";
+    } else {
+      document.title = "Only Venom";
+      faviconLink.href = "https://i.ibb.co/jkzWK6V6/14895-removebg-preview.png";
+      appleIconLink.href = "https://i.ibb.co/jkzWK6V6/14895-removebg-preview.png";
+      manifestLink.href = "/manifest.json";
+    }
+  }, [currentPath]);
 
   const [blockedIpAddresses, setBlockedIpAddresses] = useState<string[]>([]);
 

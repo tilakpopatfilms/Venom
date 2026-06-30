@@ -25,7 +25,8 @@ import {
   Facebook,
   ExternalLink,
   Send,
-  Smile
+  Smile,
+  Flag
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { 
@@ -51,6 +52,7 @@ interface VenomCardProps {
   onPostUpdate?: (updatedPost: Partial<Post>) => void;
   isBlocked?: boolean;
   onBlockedActionTriggered?: () => void;
+  compact?: boolean;
 }
 
 const REACTIONS = [
@@ -74,7 +76,8 @@ export default function VenomCard({
   highlighted = false, 
   onPostUpdate,
   isBlocked = false,
-  onBlockedActionTriggered
+  onBlockedActionTriggered,
+  compact = false
 }: VenomCardProps) {
   const [showComments, setShowComments] = useState(false);
   const [isExpandingImage, setIsExpandingImage] = useState(false);
@@ -468,21 +471,34 @@ Use it now: https://myvenom.vercel.app`;
     >
       
       {/* Top Meta Info Header */}
-      <div className="px-4 pt-4 pb-2.5 flex items-center justify-between border-b border-zinc-900/40 text-[10px] text-zinc-500 font-mono">
-        <div className="flex items-center gap-2">
+      <div className={`px-4 pt-4 pb-2.5 flex items-center justify-between border-b border-zinc-900/40 text-[10px] text-zinc-500 font-mono ${compact ? 'px-2.5 pt-2.5 pb-1.5 text-[9px]' : ''}`}>
+        <div className="flex items-center gap-1.5 flex-wrap">
           {/* Category Pill */}
-          <span className="text-emerald-400 font-bold bg-emerald-950/30 border border-emerald-500/20 px-2 py-0.5 rounded uppercase text-[9px] tracking-wider">
+          <span className={`text-emerald-400 font-bold bg-emerald-950/30 border border-emerald-500/20 px-2 py-0.5 rounded uppercase text-[9px] tracking-wider ${compact ? 'px-1.5 py-0 text-[8px]' : ''}`}>
             {getCategoryLabel(post.category)}
           </span>
           <span className="text-zinc-800">|</span>
           {/* Post Type Badge */}
-          <span className="bg-zinc-900/80 text-zinc-400 px-1.5 py-0.5 border border-zinc-800/80 rounded uppercase text-[8px] tracking-wide flex items-center gap-1">
+          <span className={`bg-zinc-900/80 text-zinc-400 px-1.5 py-0.5 border border-zinc-800/80 rounded uppercase text-[8px] tracking-wide flex items-center gap-1 ${compact ? 'px-1 py-0 text-[7.5px]' : ''}`}>
             {post.type === 'text' && <Hash className="w-2.5 h-2.5 text-zinc-500" />}
             {post.type === 'image' && <Eye className="w-2.5 h-2.5 text-zinc-500" />}
             {post.type === 'poll' && <BarChart2 className="w-2.5 h-2.5 text-zinc-500" />}
             {post.type === 'qa' && <HelpCircle className="w-2.5 h-2.5 text-zinc-500" />}
             {post.type.toUpperCase()}
           </span>
+          <span className="text-zinc-800">|</span>
+          {/* Report Button */}
+          <button
+            onClick={() => {
+              window.history.pushState({}, '', `/report?id=${post.encryptedHash}`);
+              window.dispatchEvent(new PopStateEvent('popstate'));
+            }}
+            className={`flex items-center gap-1 text-rose-500/80 hover:text-rose-400 font-bold bg-rose-950/10 hover:bg-rose-950/25 border border-rose-500/20 px-1.5 py-0.5 rounded uppercase text-[8px] tracking-wider transition-colors cursor-pointer ${compact ? 'px-1 py-0 text-[7.5px]' : ''}`}
+            title="Report this venom"
+          >
+            <Flag className="w-2.5 h-2.5 text-rose-500" />
+            <span>Report</span>
+          </button>
           {highlighted && (
             <>
               <span className="text-zinc-800">|</span>
@@ -505,15 +521,15 @@ Use it now: https://myvenom.vercel.app`;
       </div>
 
       {/* Main content pane */}
-      <div className="p-4 flex-1 flex flex-col">
+      <div className={`p-4 flex-1 flex flex-col ${compact ? 'p-3' : ''}`}>
         {/* Title */}
-        <h2 className="text-sm sm:text-base font-semibold text-zinc-100 tracking-tight leading-snug mb-2 font-sans hover:text-emerald-300 transition-colors">
+        <h2 className={`text-sm sm:text-base font-semibold text-zinc-100 tracking-tight leading-snug mb-2 font-sans hover:text-emerald-300 transition-colors ${compact ? 'text-xs mb-1' : ''}`}>
           {post.title}
         </h2>
 
         {/* Core content text */}
         {post.content && (
-          <p className="text-xs sm:text-sm text-zinc-400 leading-relaxed mb-4 whitespace-pre-wrap pl-0.5 break-words font-sans">
+          <p className={`text-xs sm:text-sm text-zinc-400 leading-relaxed mb-4 whitespace-pre-wrap pl-0.5 break-words font-sans ${compact ? 'text-[11px] mb-2' : ''}`}>
             {post.content}
           </p>
         )}

@@ -34,8 +34,12 @@ export default function PoliciesPage({ onBackToHome }: PoliciesPageProps) {
           
           <button
             onClick={() => {
-              window.history.pushState({}, '', '/');
-              window.dispatchEvent(new PopStateEvent('popstate'));
+              if (window.history.length > 1) {
+                window.history.back();
+              } else {
+                window.history.pushState({}, '', '/');
+                window.dispatchEvent(new PopStateEvent('popstate'));
+              }
             }}
             className="px-3 py-1 bg-zinc-950 hover:bg-zinc-900 border border-zinc-900 text-zinc-400 hover:text-zinc-200 text-[10px] font-bold rounded transition-colors uppercase tracking-wider flex items-center gap-1 cursor-pointer"
           >
@@ -131,6 +135,25 @@ export default function PoliciesPage({ onBackToHome }: PoliciesPageProps) {
 
         </div>
 
+        {/* SEC 3: INTERMEDIARY SAFE HARBOR & DISCLAIMER */}
+        <div className="bg-zinc-950 border border-zinc-900 rounded-lg p-6 space-y-4 shadow-xl">
+          <h3 className="text-xs font-bold text-emerald-400 border-b border-zinc-900 pb-3 uppercase tracking-widest flex items-center gap-2">
+            <Scale className="w-4 h-4 text-emerald-400" />
+            <span>3. Legal Safe Harbor & Limitation of Liability</span>
+          </h3>
+          <div className="space-y-3 text-[11px] text-zinc-400 leading-relaxed font-sans">
+            <p>
+              <strong>Platform Intermediary Status:</strong> Only Venom operates strictly as an intermediary platform and technical host under applicable digital services laws. As a decentralized, real-time communication medium without mandatory account creation, the platform does not pre-screen, censor, or actively monitor user-authored transmissions prior to their release.
+            </p>
+            <p>
+              <strong>Absolute Absence of Guarantee:</strong> While Only Venom employs automated threat intelligence grids, community-driven reporting queues, and administrative firewalls to identify and purge illicit content, we <strong>do not and cannot guarantee</strong> a 100% safe or fully vetted network environment. Users acknowledge that decentralized networks are vulnerable to sporadic, unauthorized transmissions by independent third parties. Just as globally recognized secure messaging protocols (such as Telegram, WhatsApp, or Discord) encounter challenges in regulating decentralized communications, Only Venom manages these limitations with maximum professional effort but disclaims absolute compliance guarantees.
+            </p>
+            <p>
+              <strong>Indemnification & Safe Use:</strong> By accessing Only Venom, you agree that all activities, opinions, and files shared are the sole and exclusive responsibility of the originating user signature. Only Venom, its developers, operators, and affiliates shall be held <strong>completely harmless and indemnified</strong> against any damages, legal actions, or losses arising from illegal or non-compliant actions initiated by third-party actors on this network. Users are strongly urged to exercise sound judgment, act in accordance with local statutes, and actively utilize our built-in Threat Report console to maintain community safety.
+            </p>
+          </div>
+        </div>
+
         {/* IP QUARANTINE ESCALATION CHART */}
         <div className="bg-zinc-950 border border-zinc-900 rounded-lg p-6 space-y-4 shadow-xl">
           <h3 className="text-xs font-bold text-emerald-400 border-b border-zinc-900 pb-3 uppercase tracking-widest flex items-center gap-2">
@@ -180,8 +203,12 @@ export default function PoliciesPage({ onBackToHome }: PoliciesPageProps) {
           
           <button
             onClick={() => {
-              window.history.pushState({}, '', '/');
-              window.dispatchEvent(new PopStateEvent('popstate'));
+              if (window.history.length > 1) {
+                window.history.back();
+              } else {
+                window.history.pushState({}, '', '/');
+                window.dispatchEvent(new PopStateEvent('popstate'));
+              }
             }}
             className="w-full sm:w-auto px-5 py-2 bg-emerald-500 hover:bg-emerald-400 text-zinc-950 font-bold text-xs rounded transition-all cursor-pointer font-sans text-center shrink-0 uppercase tracking-wider"
           >
