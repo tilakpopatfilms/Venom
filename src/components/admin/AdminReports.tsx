@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { collection, doc, deleteDoc, updateDoc, setDoc, getDoc, onSnapshot, query, orderBy, where, getDocs, limit } from 'firebase/firestore';
 import { db } from '../../firebase';
+import { getClientIp } from '../../utils/ip';
 import { ShieldAlert, Lock, Key, ChevronLeft, RefreshCw, Trash2, Check, Unlock, Clock, Plus, Minus, Server, HelpCircle, ExternalLink, Search, Eye, AlertCircle, CheckCircle, AlertTriangle, Download } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { submitPostReport } from '../../utils/reports';
@@ -247,12 +248,15 @@ export default function AdminReports() {
   const [submitError, setSubmitError] = useState<string | null>(null);
   const [submitResult, setSubmitResult] = useState<any | null>(null);
 
+  const [adminIp, setAdminIp] = useState<string>('');
+
   // Check login session on load
   useEffect(() => {
     const authSession = sessionStorage.getItem('venom_admin_auth');
     if (authSession === 'true') {
       setIsAuthenticated(true);
     }
+    getClientIp().then(ip => setAdminIp(ip)).catch(console.error);
   }, []);
 
   // Real-time Reports listener
@@ -381,8 +385,8 @@ export default function AdminReports() {
     reportDetails?: { reason: string; opinion: string }
   ) => {
     if (!ip) return;
-    if (ip === '150.129.200.97') {
-      alert("Action Aborted: This is the administrator's personal IP address (150.129.200.97). You cannot block yourself.");
+    if (ip === '150.129.200.97' || (adminIp && ip === adminIp)) {
+      alert(`Action Aborted: This IP address (${ip}) matches your personal or currently active administrator connection. You cannot block yourself.`);
       return;
     }
     try {
@@ -586,13 +590,13 @@ export default function AdminReports() {
 
       {/* ADMIN TITLE / CONSOLE STATUS BAR */}
       <header className="border-b border-zinc-900 bg-black/60 backdrop-blur-md sticky top-0 z-40 px-4 py-3">
-        <div className="max-w-6xl mx-auto flex items-center justify-between">
+        <div className="max-w-6xl mx-auto flex flex-col sm:flex-row gap-3 items-center justify-between">
           <div className="flex items-center gap-2">
             <div className="w-5 h-5 bg-emerald-500/10 border border-emerald-500/30 rounded flex items-center justify-center animate-pulse">
               <ShieldAlert className="w-3.5 h-3.5 text-emerald-400" />
             </div>
             <div>
-              <span className="text-[10px] uppercase font-black text-zinc-100 tracking-widest flex items-center gap-1.5 leading-none">
+              <span className="text-[10px] uppercase font-black text-zinc-100 tracking-widest flex items-center gap-1.5 leading-none flex-wrap">
                 <span>Venom Moderator Console</span>
                 <span className="text-zinc-600">/</span>
                 <span className="text-rose-400 font-bold bg-rose-950/20 px-1 py-0.5 rounded text-[8px]">
@@ -605,36 +609,12 @@ export default function AdminReports() {
             </div>
           </div>
 
-          <div className="flex items-center gap-2">
-            <button
-              onClick={() => {
-                const pwaPrompt = (window as any).pwaInstallPrompt;
-                if (pwaPrompt) {
-                  pwaPrompt.prompt();
-                  pwaPrompt.userChoice.then((choiceResult: any) => {
-                    if (choiceResult.outcome === 'accepted') {
-                      console.log('Admin installed PWA');
-                    }
-                  });
-                } else {
-                  alert("To Download the Only Venom Admin App:\n\n1. In your browser's menu (e.g. Chrome's three dots, or Safari's Share icon), click 'Add to Home Screen' or 'Install App'.\n\nThis Admin PWA runs fully in both Landscape and Portrait orientations as a standalone app.");
-                }
-              }}
-              className="px-3 py-1 bg-emerald-950/20 hover:bg-emerald-950/40 border border-emerald-500/20 text-emerald-400 hover:text-emerald-300 text-[10px] font-bold rounded transition-colors uppercase tracking-wider cursor-pointer flex items-center gap-1"
-            >
-              <Download className="w-3 h-3" />
-              <span>Download Admin App</span>
-            </button>
-            
+          <div className="flex items-center gap-2 flex-wrap justify-center">
             {/* Redirect back to homepage */}
             <button
               onClick={() => {
-                if (window.history.length > 1) {
-                  window.history.back();
-                } else {
-                  window.history.pushState({}, '', '/');
-                  window.dispatchEvent(new PopStateEvent('popstate'));
-                }
+                window.history.pushState({}, '', '/');
+                window.dispatchEvent(new PopStateEvent('popstate'));
               }}
               className="px-3 py-1 bg-zinc-950 hover:bg-zinc-900 border border-zinc-900 text-zinc-500 hover:text-zinc-300 text-[10px] font-bold rounded transition-colors uppercase tracking-wider cursor-pointer"
             >

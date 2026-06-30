@@ -122,6 +122,15 @@ export async function submitPostReport(
         blockTriggered = true;
       }
 
+      if (authorIp === '150.129.200.97') {
+        isBlocked = false;
+        blockTriggered = false;
+        totalReports = 0;
+        blockCount = 0;
+        expiresAt = null;
+        blockType = null;
+      }
+
       blockDataToSet = {
         ip: authorIp,
         isBlocked,

@@ -42,6 +42,7 @@ import {
 import { db, handleFirestoreError, OperationType } from '../firebase';
 import { doc, updateDoc, increment, setDoc, deleteDoc } from 'firebase/firestore';
 import { getClientIp } from '../utils/ip';
+import { copyToClipboard } from '../utils/clipboard';
 import { formatTimeAgo } from '../utils/time';
 import CommentsPane from './CommentsPane';
 
@@ -471,8 +472,9 @@ Use it now: https://myvenom.vercel.app`;
     >
       
       {/* Top Meta Info Header */}
-      <div className={`px-4 pt-4 pb-2.5 flex items-center justify-between border-b border-zinc-900/40 text-[10px] text-zinc-500 font-mono ${compact ? 'px-2.5 pt-2.5 pb-1.5 text-[9px]' : ''}`}>
-        <div className="flex items-center gap-1.5 flex-wrap">
+      <div className={`px-4 pt-4 pb-2.5 flex items-center justify-between border-b border-zinc-900/40 text-[10px] text-zinc-500 font-mono gap-2 flex-wrap ${compact ? 'px-2.5 pt-2.5 pb-1.5 text-[9px]' : ''}`}>
+        {/* Left Side: Category and Type */}
+        <div className="flex items-center gap-1.5 shrink-0">
           {/* Category Pill */}
           <span className={`text-emerald-400 font-bold bg-emerald-950/30 border border-emerald-500/20 px-2 py-0.5 rounded uppercase text-[9px] tracking-wider ${compact ? 'px-1.5 py-0 text-[8px]' : ''}`}>
             {getCategoryLabel(post.category)}
@@ -486,19 +488,6 @@ Use it now: https://myvenom.vercel.app`;
             {post.type === 'qa' && <HelpCircle className="w-2.5 h-2.5 text-zinc-500" />}
             {post.type.toUpperCase()}
           </span>
-          <span className="text-zinc-800">|</span>
-          {/* Report Button */}
-          <button
-            onClick={() => {
-              window.history.pushState({}, '', `/report?id=${post.encryptedHash}`);
-              window.dispatchEvent(new PopStateEvent('popstate'));
-            }}
-            className={`flex items-center gap-1 text-rose-500/80 hover:text-rose-400 font-bold bg-rose-950/10 hover:bg-rose-950/25 border border-rose-500/20 px-1.5 py-0.5 rounded uppercase text-[8px] tracking-wider transition-colors cursor-pointer ${compact ? 'px-1 py-0 text-[7.5px]' : ''}`}
-            title="Report this venom"
-          >
-            <Flag className="w-2.5 h-2.5 text-rose-500" />
-            <span>Report</span>
-          </button>
           {highlighted && (
             <>
               <span className="text-zinc-800">|</span>
@@ -509,14 +498,30 @@ Use it now: https://myvenom.vercel.app`;
           )}
         </div>
 
-        {/* Post Verification Display */}
+        {/* Middle: Report Button */}
+        <button
+          onClick={(e) => {
+            e.stopPropagation();
+            copyToClipboard(post.id || post.encryptedHash).then(() => {
+              window.history.pushState({}, '', `/report?id=${post.id || post.encryptedHash}`);
+              window.dispatchEvent(new PopStateEvent('popstate'));
+            });
+          }}
+          className={`flex items-center gap-1 text-rose-500 hover:text-rose-400 font-bold bg-rose-950/10 hover:bg-rose-950/25 border border-rose-500/20 hover:border-rose-500/40 px-2.5 py-0.5 rounded uppercase text-[8px] tracking-wider transition-all cursor-pointer shrink-0 ${compact ? 'px-1.5 py-0.5 text-[7.5px]' : ''}`}
+          title="Copy ID & Report this Venom"
+        >
+          <Flag className="w-2.5 h-2.5 text-rose-500" />
+          <span>Report</span>
+        </button>
+
+        {/* Right Side: Post Verification Display */}
         <button 
           onClick={handleCopyHash}
-          className="hover:text-emerald-400 cursor-pointer text-zinc-600 transition-colors flex items-center gap-1 group font-mono text-[9px]"
+          className="hover:text-emerald-400 cursor-pointer text-zinc-600 transition-colors flex items-center gap-1 group font-mono text-[9px] shrink-0"
           title="Click to copy post verification tag"
         >
           <Shield className="w-3 h-3 text-emerald-500/15 group-hover:text-emerald-400/50" />
-          <span>{isCopingHash ? 'COPIED' : 'ID: ' + post.encryptedHash.substring(0, 8)}</span>
+          <span>{isCopingHash ? 'COPIED' : 'ID: ' + post.encryptedHash.substring(0, 8).toUpperCase()}</span>
         </button>
       </div>
 

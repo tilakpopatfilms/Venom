@@ -100,13 +100,13 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ posts, onNavigat
 
       {/* ADMIN TITLE / CONSOLE STATUS BAR */}
       <header className="border-b border-zinc-900 bg-black/60 backdrop-blur-md sticky top-0 z-40 px-4 py-3">
-        <div className="max-w-6xl mx-auto flex items-center justify-between">
+        <div className="max-w-6xl mx-auto flex flex-col sm:flex-row gap-3 items-center justify-between">
           <div className="flex items-center gap-2">
             <div className="w-5 h-5 bg-emerald-500/10 border border-emerald-500/30 rounded flex items-center justify-center">
               <ShieldAlert className="w-3.5 h-3.5 text-emerald-400 animate-pulse" />
             </div>
             <div>
-              <span className="text-[10px] uppercase font-black text-zinc-100 tracking-widest flex items-center gap-1.5 leading-none">
+              <span className="text-[10px] uppercase font-black text-zinc-100 tracking-widest flex items-center gap-1.5 leading-none flex-wrap">
                 <span>Venom Comm-Center</span>
                 <span className="text-zinc-600">/</span>
                 <span className="text-emerald-400 font-bold bg-emerald-950/20 px-1 py-0.5 rounded text-[8px]">
@@ -119,7 +119,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ posts, onNavigat
             </div>
           </div>
 
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-2 flex-wrap justify-center">
             <button
               onClick={() => {
                 const pwaPrompt = (window as any).pwaInstallPrompt;

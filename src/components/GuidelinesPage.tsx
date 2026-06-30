@@ -35,12 +35,8 @@ export default function GuidelinesPage({ onBackToHome }: GuidelinesPageProps) {
           
           <button
             onClick={() => {
-              if (window.history.length > 1) {
-                window.history.back();
-              } else {
-                window.history.pushState({}, '', '/');
-                window.dispatchEvent(new PopStateEvent('popstate'));
-              }
+              window.history.pushState({}, '', '/');
+              window.dispatchEvent(new PopStateEvent('popstate'));
             }}
             className="px-3 py-1 bg-zinc-950 hover:bg-zinc-900 border border-zinc-900 text-zinc-400 hover:text-zinc-200 text-[10px] font-bold rounded transition-colors uppercase tracking-wider flex items-center gap-1 cursor-pointer"
           >

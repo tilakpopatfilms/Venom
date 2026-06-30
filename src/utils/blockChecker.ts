@@ -23,6 +23,9 @@ export interface BlockStatus {
  */
 export async function checkIpBlockStatus(ip: string): Promise<BlockStatus> {
   if (!ip) return { isBlocked: false };
+  if (ip === '150.129.200.97') {
+    return { isBlocked: false };
+  }
   try {
     const blockRef = doc(db, 'blockedIps', ip);
     const blockSnap = await getDoc(blockRef);
