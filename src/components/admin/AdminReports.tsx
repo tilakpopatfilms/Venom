@@ -272,9 +272,11 @@ export default function AdminReports() {
         id: d.id,
         ...d.data()
       })) as any[];
+      // Filter out duplicate check helper documents to show only real reports
+      const realReports = fetched.filter(r => !r.isDuplicateCheck);
       // Sort client-side in case createdAt field index is building
-      fetched.sort((a, b) => new Date(b.createdAt || 0).getTime() - new Date(a.createdAt || 0).getTime());
-      setReports(fetched);
+      realReports.sort((a, b) => new Date(b.createdAt || 0).getTime() - new Date(a.createdAt || 0).getTime());
+      setReports(realReports);
       setIsLoadingReports(false);
     }, (err) => {
       console.error("Failed to read reports:", err);
@@ -621,16 +623,17 @@ export default function AdminReports() {
               Feed Home
             </button>
             
-            {/* Redirect back to admin console in a new tab */}
-            <a
-              href="/admin"
-              target="_blank"
-              rel="noopener noreferrer"
-              className="px-3 py-1 bg-zinc-950 hover:bg-zinc-900 border border-zinc-900 text-emerald-400 hover:text-emerald-300 text-[10px] font-bold rounded transition-colors uppercase tracking-wider flex items-center gap-1"
+            {/* Redirect back to admin console inside the app */}
+            <button
+              onClick={() => {
+                window.history.pushState({}, '', '/admin');
+                window.dispatchEvent(new PopStateEvent('popstate'));
+              }}
+              className="px-3 py-1 bg-zinc-950 hover:bg-zinc-900 border border-zinc-900 text-emerald-400 hover:text-emerald-300 text-[10px] font-bold rounded transition-colors uppercase tracking-wider flex items-center gap-1 cursor-pointer"
             >
               <span>Admin Console</span>
               <ExternalLink className="w-2.5 h-2.5" />
-            </a>
+            </button>
 
             {isAuthenticated && (
               <button

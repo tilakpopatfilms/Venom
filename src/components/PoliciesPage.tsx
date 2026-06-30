@@ -93,6 +93,12 @@ export default function PoliciesPage({ onBackToHome }: PoliciesPageProps) {
                   IP signatures and operating agents are recorded upon post creation to safeguard Firestore database write operations from DDoS attacks, malicious bots, or spam-scripts.
                 </p>
               </div>
+              <div className="bg-zinc-900/40 p-2.5 rounded border border-zinc-900">
+                <span className="text-zinc-200 font-bold block mb-1">D. UNILATERAL ACCESS CONTROL</span>
+                <p className="font-sans text-[10.5px]">
+                  Venom reserves the absolute, unilateral right to suspend, terminate, restrict, or deactivate device access, IP ranges, or cryptographic keys at any time, with or without prior notice, for network preservation, spam prevention, policy enforcement, or at its sole discretion.
+                </p>
+              </div>
             </div>
           </div>
 

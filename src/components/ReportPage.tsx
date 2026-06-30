@@ -254,8 +254,12 @@ export default function ReportPage() {
                 </button>
                 <button
                   onClick={() => {
-                    window.history.pushState({}, '', '/');
-                    window.dispatchEvent(new PopStateEvent('popstate'));
+                    if (window.history.length > 1) {
+                      window.history.back();
+                    } else {
+                      window.history.pushState({}, '', '/');
+                      window.dispatchEvent(new PopStateEvent('popstate'));
+                    }
                   }}
                   className="px-4 py-2 bg-emerald-500 hover:bg-emerald-400 text-zinc-950 text-xs font-bold rounded transition-all uppercase tracking-wider font-sans cursor-pointer"
                 >

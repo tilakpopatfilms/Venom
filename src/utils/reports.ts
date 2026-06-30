@@ -1,4 +1,4 @@
-import { doc, getDoc, updateDoc, runTransaction } from 'firebase/firestore';
+import { doc, getDoc, updateDoc, runTransaction, collection } from 'firebase/firestore';
 import { db } from '../firebase';
 
 export interface ReportPayload {
@@ -29,15 +29,21 @@ export async function submitPostReport(
   
   // Clean reporter IP for Firestore document key
   const safeIpKey = reporterIp.replace(/[^a-zA-Z0-9]/g, '_');
-  const reportId = `report_${postId}_${safeIpKey}`;
-  const reportRef = doc(db, 'reports', reportId);
+  
+  // Create a separate duplicate check document in the reports collection to prevent double reporting
+  const duplicateCheckId = `dup_${postId}_${safeIpKey}`;
+  const duplicateCheckRef = doc(db, 'reports', duplicateCheckId);
+
+  // Generate a unique identifier for the actual report log entry
+  const uniqueReportId = doc(collection(db, 'reports')).id;
+  const reportRef = doc(db, 'reports', uniqueReportId);
 
   const result = await runTransaction(db, async (transaction) => {
     // === READ OPERATIONS FIRST ===
 
     // 1. Verify if the report has already been filed from this IP for this post
-    const reportSnap = await transaction.get(reportRef);
-    if (reportSnap.exists()) {
+    const dupSnap = await transaction.get(duplicateCheckRef);
+    if (dupSnap.exists()) {
       throw new Error("You have already submitted a security report for this post. Duplicate report ignored.");
     }
 
@@ -155,9 +161,17 @@ export async function submitPostReport(
 
     // === WRITE OPERATIONS AT THE VERY END ===
 
-    // 1. Log the report entry
+    // 1. Log the duplicate check entry
+    transaction.set(duplicateCheckRef, {
+      isDuplicateCheck: true,
+      postId,
+      reporterIp,
+      createdAt: new Date().toISOString()
+    });
+
+    // 2. Log the unique report entry
     transaction.set(reportRef, {
-      id: reportId,
+      id: uniqueReportId,
       postId,
       reason,
       opinion: opinion.trim(),
@@ -169,13 +183,13 @@ export async function submitPostReport(
       postedFromIp: authorIp,
     });
 
-    // 2. Update the post's report counters
+    // 3. Update the post's report counters
     transaction.update(postRef, {
       reportsCount: currentReports,
       isDeleted: shouldDelete ? true : (postData.isDeleted || false)
     });
 
-    // 3. Set the blocked IP status if needed
+    // 4. Set the blocked IP status if needed
     if (authorBlockRef && blockDataToSet) {
       transaction.set(authorBlockRef, blockDataToSet, { merge: true });
     }

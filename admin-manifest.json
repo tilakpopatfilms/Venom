@@ -1,0 +1,22 @@
+{
+  "name": "Venom Admin Console",
+  "short_name": "Venom Admin",
+  "description": "Administrative moderation and security console for the Venom network.",
+  "start_url": "/admin?pwa=admin",
+  "display": "standalone",
+  "background_color": "#030303",
+  "theme_color": "#ef4444",
+  "orientation": "any",
+  "icons": [
+    {
+      "src": "https://i.ibb.co/RpqhT7QZ/14893-removebg-preview.png",
+      "sizes": "192x192",
+      "type": "image/png"
+    },
+    {
+      "src": "https://i.ibb.co/RpqhT7QZ/14893-removebg-preview.png",
+      "sizes": "512x512",
+      "type": "image/png"
+    }
+  ]
+}

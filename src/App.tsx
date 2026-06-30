@@ -149,6 +149,27 @@ export default function App() {
     return () => window.removeEventListener('popstate', handleLocationChange);
   }, []);
 
+  // Admin PWA start_url forcing / session checking to guarantee it always opens on /admin
+  useEffect(() => {
+    const isStandalone = window.matchMedia('(display-mode: standalone)').matches || (window.navigator as any).standalone === true;
+    const params = new URLSearchParams(window.location.search);
+    const hasPwaParam = params.get('pwa') === 'admin';
+    
+    if (hasPwaParam) {
+      localStorage.setItem('venom_pwa_type', 'admin');
+    }
+    
+    if (isStandalone || localStorage.getItem('venom_pwa_type') === 'admin') {
+      const sessionStarted = sessionStorage.getItem('venom_pwa_session_active');
+      if (!sessionStarted) {
+        // Fresh session launched or reopened! Force route to /admin!
+        sessionStorage.setItem('venom_pwa_session_active', 'true');
+        window.history.replaceState({}, '', '/admin');
+        setCurrentPath('/admin');
+      }
+    }
+  }, []);
+
   // Listen to beforeinstallprompt event to support manual PWA installations from admin console
   useEffect(() => {
     const handleBeforeInstallPrompt = (e: any) => {
