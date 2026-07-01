@@ -2,7 +2,7 @@
   "name": "Venom Admin",
   "short_name": "Venom Admin",
   "description": "Administrative Control and Safety Enforcement node for Only Venom.",
-  "start_url": "/admin",
+  "start_url": "/admin?pwa=admin",
   "display": "standalone",
   "background_color": "#030303",
   "theme_color": "#f43f5e",

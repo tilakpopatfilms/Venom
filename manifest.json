@@ -2,7 +2,7 @@
   "name": "Venom Decentralized Network",
   "short_name": "Venom",
   "description": "Fully anonymous, end-to-end encrypted style decentralized social space for unfiltered thoughts, polls, and Q&A.",
-  "start_url": "/",
+  "start_url": "/?pwa=main",
   "display": "standalone",
   "background_color": "#09090b",
   "theme_color": "#10b981",

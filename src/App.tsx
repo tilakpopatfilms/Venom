@@ -150,23 +150,42 @@ export default function App() {
     return () => window.removeEventListener('popstate', handleLocationChange);
   }, []);
 
-  // Admin PWA start_url forcing / session checking to guarantee it always opens on /admin
+  // Dual PWA routing and session management logic for Admin vs Main PWA isolation
   useEffect(() => {
     const isStandalone = window.matchMedia('(display-mode: standalone)').matches || (window.navigator as any).standalone === true;
     const params = new URLSearchParams(window.location.search);
-    const hasPwaParam = params.get('pwa') === 'admin';
-    
-    if (hasPwaParam) {
-      localStorage.setItem('venom_pwa_type', 'admin');
+    const pwaParam = params.get('pwa'); // 'admin' or 'main'
+
+    if (pwaParam === 'admin') {
+      localStorage.setItem('venom_pwa_active_app', 'admin');
+    } else if (pwaParam === 'main') {
+      localStorage.setItem('venom_pwa_active_app', 'main');
     }
-    
-    if (isStandalone || localStorage.getItem('venom_pwa_type') === 'admin') {
-      const sessionStarted = sessionStorage.getItem('venom_pwa_session_active');
-      if (!sessionStarted) {
-        // Fresh session launched or reopened! Force route to /admin!
-        sessionStorage.setItem('venom_pwa_session_active', 'true');
-        window.history.replaceState({}, '', '/admin');
-        setCurrentPath('/admin');
+
+    if (isStandalone) {
+      let activeApp = localStorage.getItem('venom_pwa_active_app');
+      if (!activeApp) {
+        // If undefined, guess based on current loaded path
+        activeApp = window.location.pathname.startsWith('/admin') ? 'admin' : 'main';
+        localStorage.setItem('venom_pwa_active_app', activeApp);
+      }
+
+      if (activeApp === 'admin') {
+        const sessionStarted = sessionStorage.getItem('venom_admin_session_active');
+        if (!sessionStarted) {
+          sessionStorage.setItem('venom_admin_session_active', 'true');
+          // For a fresh session of Admin PWA, force the route to /admin
+          window.history.replaceState({}, '', '/admin');
+          setCurrentPath('/admin');
+        }
+      } else {
+        const sessionStarted = sessionStorage.getItem('venom_main_session_active');
+        if (!sessionStarted) {
+          sessionStorage.setItem('venom_main_session_active', 'true');
+          // For a fresh session of Main PWA, force the route to /
+          window.history.replaceState({}, '', '/');
+          setCurrentPath('/');
+        }
       }
     }
   }, []);
