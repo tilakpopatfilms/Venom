@@ -6,11 +6,45 @@
     <meta name="theme-color" content="#09090b" />
     <meta name="apple-mobile-web-app-capable" content="yes" />
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
-    <link rel="manifest" href="/manifest.json" />
-    <link rel="icon" type="image/png" href="https://i.ibb.co/jkzWK6V6/14895-removebg-preview.png?v=2" sizes="32x32" />
-    <link rel="icon" type="image/png" href="https://i.ibb.co/jkzWK6V6/14895-removebg-preview.png?v=2" sizes="16x16" />
-    <link rel="shortcut icon" type="image/png" href="https://i.ibb.co/jkzWK6V6/14895-removebg-preview.png?v=2" />
+    <link id="pwa-manifest-link" rel="manifest" href="/manifest.json" />
+    <link id="favicon-link-32" rel="icon" type="image/png" href="https://i.ibb.co/jkzWK6V6/14895-removebg-preview.png?v=2" sizes="32x32" />
+    <link id="favicon-link-16" rel="icon" type="image/png" href="https://i.ibb.co/jkzWK6V6/14895-removebg-preview.png?v=2" sizes="16x16" />
+    <link id="apple-icon-link" rel="apple-touch-icon" href="https://i.ibb.co/jkzWK6V6/14895-removebg-preview.png?v=2" />
     <title>Venom | Decentralized Anonymous Grid</title>
+    <script>
+      (function() {
+        var path = window.location.pathname;
+        var isAdmin = path.startsWith('/admin') || path.includes('admin');
+        var manifestUrl = isAdmin ? '/admin-manifest.json' : '/manifest.json';
+        var faviconUrl = isAdmin ? 'https://i.ibb.co/RpqhT7QZ/14893-removebg-preview.png' : 'https://i.ibb.co/jkzWK6V6/14895-removebg-preview.png';
+        var titleText = "Venom | Decentralized Anonymous Grid";
+        if (isAdmin) {
+          if (path.includes('report')) {
+            titleText = "Venom Admin Reports";
+          } else {
+            titleText = "Venom Admin Console";
+          }
+        } else {
+          if (path.startsWith('/report') || path.includes('report')) {
+            titleText = "Venom Security Report";
+          } else if (path.startsWith('/policies') || path.includes('policies')) {
+            titleText = "Venom Policies";
+          } else if (path.startsWith('/guidelines') || path.includes('guidelines')) {
+            titleText = "Venom Guidelines";
+          }
+        }
+        
+        try {
+          document.getElementById('pwa-manifest-link').href = manifestUrl;
+          document.getElementById('favicon-link-32').href = faviconUrl;
+          document.getElementById('favicon-link-16').href = faviconUrl;
+          document.getElementById('apple-icon-link').href = faviconUrl;
+          document.title = titleText;
+        } catch(e) {
+          console.error('Error executing head initialization script:', e);
+        }
+      })();
+    </script>
   </head>
   <body>
     <div id="root"></div>

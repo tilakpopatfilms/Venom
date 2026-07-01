@@ -8,7 +8,11 @@ import { ShieldAlert, ChevronLeft, Search, Eye, AlertCircle, CheckCircle, Refres
 import { motion, AnimatePresence } from 'motion/react';
 import VenomCard from './VenomCard';
 
-export default function ReportPage() {
+interface ReportPageProps {
+  onBackToHome?: () => void;
+}
+
+export default function ReportPage({ onBackToHome }: ReportPageProps) {
   const [postId, setPostId] = useState('');
   const [selectedReason, setSelectedReason] = useState('');
   const [opinion, setOpinion] = useState('');
@@ -164,8 +168,12 @@ export default function ReportPage() {
           
           <button
             onClick={() => {
-              window.history.pushState({}, '', '/');
-              window.dispatchEvent(new PopStateEvent('popstate'));
+              if (onBackToHome) {
+                onBackToHome();
+              } else {
+                window.history.pushState({}, '', '/');
+                window.dispatchEvent(new PopStateEvent('popstate'));
+              }
             }}
             className="px-3 py-1 bg-zinc-950 hover:bg-zinc-900 border border-zinc-900 text-zinc-400 hover:text-zinc-200 text-[10px] font-bold rounded transition-colors uppercase tracking-wider flex items-center gap-1 cursor-pointer"
           >
@@ -254,8 +262,12 @@ export default function ReportPage() {
                 </button>
                 <button
                   onClick={() => {
-                    window.history.pushState({}, '', '/');
-                    window.dispatchEvent(new PopStateEvent('popstate'));
+                    if (onBackToHome) {
+                      onBackToHome();
+                    } else {
+                      window.history.pushState({}, '', '/');
+                      window.dispatchEvent(new PopStateEvent('popstate'));
+                    }
                   }}
                   className="px-4 py-2 bg-emerald-500 hover:bg-emerald-400 text-zinc-950 text-xs font-bold rounded transition-all uppercase tracking-wider font-sans cursor-pointer"
                 >

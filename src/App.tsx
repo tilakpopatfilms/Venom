@@ -156,24 +156,28 @@ export default function App() {
     const params = new URLSearchParams(window.location.search);
     const pwaParam = params.get('pwa'); // 'admin' or 'main'
 
+    let activeApp = localStorage.getItem('venom_pwa_active_app');
+
     if (pwaParam === 'admin') {
+      activeApp = 'admin';
       localStorage.setItem('venom_pwa_active_app', 'admin');
     } else if (pwaParam === 'main') {
+      activeApp = 'main';
       localStorage.setItem('venom_pwa_active_app', 'main');
-    }
-
-    if (isStandalone) {
-      let activeApp = localStorage.getItem('venom_pwa_active_app');
+    } else {
+      // Determine based on current path if no active PWA type is stored
       if (!activeApp) {
-        // If undefined, guess based on current loaded path
         activeApp = window.location.pathname.startsWith('/admin') ? 'admin' : 'main';
         localStorage.setItem('venom_pwa_active_app', activeApp);
       }
+    }
 
+    if (isStandalone) {
       if (activeApp === 'admin') {
         const sessionStarted = sessionStorage.getItem('venom_admin_session_active');
         if (!sessionStarted) {
           sessionStorage.setItem('venom_admin_session_active', 'true');
+          sessionStorage.removeItem('venom_main_session_active'); // Keep separate
           // For a fresh session of Admin PWA, force the route to /admin
           window.history.replaceState({}, '', '/admin');
           setCurrentPath('/admin');
@@ -182,6 +186,7 @@ export default function App() {
         const sessionStarted = sessionStorage.getItem('venom_main_session_active');
         if (!sessionStarted) {
           sessionStorage.setItem('venom_main_session_active', 'true');
+          sessionStorage.removeItem('venom_admin_session_active'); // Keep separate
           // For a fresh session of Main PWA, force the route to /
           window.history.replaceState({}, '', '/');
           setCurrentPath('/');
@@ -204,28 +209,10 @@ export default function App() {
 
   // Dynamically change title, favicon, and manifest on route change for Admin PWA isolation
   useEffect(() => {
-    // Swap Favicon
-    let faviconLink: HTMLLinkElement | null = document.querySelector("link[rel~='icon']");
-    if (!faviconLink) {
-      faviconLink = document.createElement('link');
-      faviconLink.rel = 'icon';
-      document.getElementsByTagName('head')[0].appendChild(faviconLink);
-    }
-
-    let appleIconLink: HTMLLinkElement | null = document.querySelector("link[rel='apple-touch-icon']");
-    if (!appleIconLink) {
-      appleIconLink = document.createElement('link');
-      appleIconLink.rel = 'apple-touch-icon';
-      document.getElementsByTagName('head')[0].appendChild(appleIconLink);
-    }
-
-    // Swap PWA Manifest
-    let manifestLink: HTMLLinkElement | null = document.querySelector("link[rel='manifest']");
-    if (!manifestLink) {
-      manifestLink = document.createElement('link');
-      manifestLink.rel = 'manifest';
-      document.getElementsByTagName('head')[0].appendChild(manifestLink);
-    }
+    const favicon32 = document.getElementById('favicon-link-32') as HTMLLinkElement | null;
+    const favicon16 = document.getElementById('favicon-link-16') as HTMLLinkElement | null;
+    const appleIconLink = document.getElementById('apple-icon-link') as HTMLLinkElement | null;
+    const manifestLink = document.getElementById('pwa-manifest-link') as HTMLLinkElement | null;
     
     const isAdminReportRoute = currentPath.startsWith('/admin/report') || currentPath.includes('admin/report') || currentPath.includes('reports');
     const isAdminRoute = currentPath.startsWith('/admin');
@@ -246,17 +233,20 @@ export default function App() {
       pageTitle = "Venom Guidelines";
     }
 
-    if (isAdminRoute || isAdminReportRoute) {
-      document.title = pageTitle;
-      faviconLink.href = "https://i.ibb.co/RpqhT7QZ/14893-removebg-preview.png";
-      appleIconLink.href = "https://i.ibb.co/RpqhT7QZ/14893-removebg-preview.png";
-      manifestLink.href = "/admin-manifest.json";
-    } else {
-      document.title = pageTitle;
-      faviconLink.href = "https://i.ibb.co/jkzWK6V6/14895-removebg-preview.png";
-      appleIconLink.href = "https://i.ibb.co/jkzWK6V6/14895-removebg-preview.png";
-      manifestLink.href = "/manifest.json";
-    }
+    document.title = pageTitle;
+
+    const iconUrl = (isAdminRoute || isAdminReportRoute) 
+      ? "https://i.ibb.co/RpqhT7QZ/14893-removebg-preview.png" 
+      : "https://i.ibb.co/jkzWK6V6/14895-removebg-preview.png";
+
+    const manifestUrl = (isAdminRoute || isAdminReportRoute)
+      ? "/admin-manifest.json"
+      : "/manifest.json";
+
+    if (favicon32) favicon32.href = iconUrl;
+    if (favicon16) favicon16.href = iconUrl;
+    if (appleIconLink) appleIconLink.href = iconUrl;
+    if (manifestLink) manifestLink.href = manifestUrl;
   }, [currentPath]);
 
   const [blockedIpAddresses, setBlockedIpAddresses] = useState<string[]>([]);
@@ -535,7 +525,7 @@ export default function App() {
   // User report page route check
   if (currentPath.startsWith('/report')) {
     return (
-      <ReportPage />
+      <ReportPage onBackToHome={handleBackToHome} />
     );
   }
 
