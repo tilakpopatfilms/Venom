@@ -131,7 +131,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ posts, onNavigat
                     }
                   });
                 } else {
-                  alert("To Download the Only Venom Admin App:\n\n1. In your browser's menu (e.g. Chrome's three dots, or Safari's Share icon), click 'Add to Home Screen' or 'Install App'.\n\nThis Admin PWA runs fully in both Landscape and Portrait orientations as a standalone app.");
+                  alert("To Download the Venom Admin App:\n\n1. In your browser's menu (e.g. Chrome's three dots, or Safari's Share icon), click 'Add to Home Screen' or 'Install App'.\n\nThis Admin PWA runs fully in both Landscape and Portrait orientations as a standalone app.");
                 }
               }}
               className="px-3 py-1 bg-emerald-950/20 hover:bg-emerald-950/40 border border-emerald-500/20 text-emerald-400 hover:text-emerald-300 text-[10px] font-bold rounded transition-colors uppercase tracking-wider cursor-pointer flex items-center gap-1"
@@ -250,15 +250,16 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ posts, onNavigat
                 </div>
               </div>
               
-              <a
-                href="/admin/report"
-                target="_blank"
-                rel="noopener noreferrer"
-                className="w-full sm:w-auto px-4 py-2 bg-rose-950/20 border border-rose-500/30 hover:border-rose-500 text-rose-400 text-[10px] font-bold rounded uppercase tracking-wider flex items-center justify-center gap-1.5 transition-colors shrink-0"
+              <button
+                onClick={() => {
+                  window.history.pushState({}, '', '/admin/report');
+                  window.dispatchEvent(new PopStateEvent('popstate'));
+                }}
+                className="w-full sm:w-auto px-4 py-2 bg-rose-950/20 border border-rose-500/30 hover:border-rose-500 text-rose-400 text-[10px] font-bold rounded uppercase tracking-wider flex items-center justify-center gap-1.5 transition-colors shrink-0 cursor-pointer"
               >
                 <span>Launch Threat Reports Terminal</span>
                 <ExternalLink className="w-3.5 h-3.5 text-rose-400" />
-              </a>
+              </button>
             </div>
 
             {/* FIREWALL SECURITY & DATABASE EXPENDITURE GRID */}

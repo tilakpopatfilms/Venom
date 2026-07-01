@@ -91,12 +91,13 @@ export default function App() {
   };
 
   const handleBackToHome = () => {
-    if (window.history.length > 1) {
-      window.history.back();
-    } else {
-      window.history.pushState({}, '', '/');
-      setCurrentPath('/');
-    }
+    window.history.pushState({}, '', '/');
+    setCurrentPath('/');
+  };
+
+  const handleNavigate = (path: string) => {
+    window.history.pushState({}, '', path);
+    setCurrentPath(path);
   };
 
   // Synchronize routing and auto-decryption parameters on direct URL load
@@ -538,6 +539,7 @@ export default function App() {
         isRefreshing={isRefreshing}
         onShowGuidelines={() => setActiveInfoModal('guidelines')}
         onShowPolicies={() => setActiveInfoModal('policies')}
+        onNavigate={handleNavigate}
       />
 
       {/* Centered Instagram-style Feed Layout */}

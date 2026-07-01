@@ -12,6 +12,7 @@ interface HeaderProps {
   isRefreshing: boolean;
   onShowGuidelines: () => void;
   onShowPolicies: () => void;
+  onNavigate: (path: string) => void;
 }
 
 export default function Header({
@@ -20,6 +21,7 @@ export default function Header({
   isRefreshing,
   onShowGuidelines,
   onShowPolicies,
+  onNavigate,
 }: HeaderProps) {
   const [showMenuDropdown, setShowMenuDropdown] = useState(false);
 
@@ -34,8 +36,9 @@ export default function Header({
             alt="Venom Logo" 
             className="w-11 h-11 object-contain select-none drop-shadow-[0_0_10px_rgba(16,185,129,0.4)] transition-transform duration-500 hover:scale-110 active:scale-95 cursor-pointer"
             referrerPolicy="no-referrer"
+            onClick={() => onNavigate('/')}
           />
-          <div>
+          <div className="cursor-pointer" onClick={() => onNavigate('/')}>
             <h1 className="text-lg font-black tracking-widest font-display text-emerald-400 select-none">
               VENOM
             </h1>
@@ -60,36 +63,36 @@ export default function Header({
             </button>
             {showMenuDropdown && (
               <div className="absolute right-0 mt-2 w-44 bg-zinc-950 border border-zinc-900 rounded-md shadow-2xl z-50 py-1 text-xs font-mono text-zinc-400">
-                <a
-                  href="/guidelines"
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  onClick={() => setShowMenuDropdown(false)}
-                  className="w-full text-left px-3.5 py-2 hover:bg-zinc-900 hover:text-emerald-400 flex items-center gap-2 cursor-pointer transition-colors block"
+                <button
+                  onClick={() => {
+                    setShowMenuDropdown(false);
+                    onNavigate('/guidelines');
+                  }}
+                  className="w-full text-left px-3.5 py-2 hover:bg-zinc-900 hover:text-emerald-400 flex items-center gap-2 cursor-pointer transition-colors block font-mono"
                 >
                   <ShieldAlert className="w-3.5 h-3.5 text-emerald-500/60" />
                   <span>Guidelines</span>
-                </a>
-                <a
-                  href="/policies"
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  onClick={() => setShowMenuDropdown(false)}
-                  className="w-full text-left px-3.5 py-2 hover:bg-zinc-900 hover:text-emerald-400 flex items-center gap-2 cursor-pointer transition-colors block"
+                </button>
+                <button
+                  onClick={() => {
+                    setShowMenuDropdown(false);
+                    onNavigate('/policies');
+                  }}
+                  className="w-full text-left px-3.5 py-2 hover:bg-zinc-900 hover:text-emerald-400 flex items-center gap-2 cursor-pointer transition-colors block font-mono"
                 >
                   <HelpCircle className="w-3.5 h-3.5 text-emerald-500/60" />
                   <span>Policies</span>
-                </a>
-                <a
-                  href="/report"
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  onClick={() => setShowMenuDropdown(false)}
-                  className="w-full text-left px-3.5 py-2 hover:bg-zinc-900 hover:text-emerald-400 flex items-center gap-2 cursor-pointer transition-colors block"
+                </button>
+                <button
+                  onClick={() => {
+                    setShowMenuDropdown(false);
+                    onNavigate('/report');
+                  }}
+                  className="w-full text-left px-3.5 py-2 hover:bg-zinc-900 hover:text-emerald-400 flex items-center gap-2 cursor-pointer transition-colors block font-mono"
                 >
                   <ShieldAlert className="w-3.5 h-3.5 text-rose-500/60" />
                   <span>Report Post</span>
-                </a>
+                </button>
               </div>
             )}
           </div>

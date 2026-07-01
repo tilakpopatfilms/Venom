@@ -194,14 +194,15 @@ export const AdminPosts: React.FC<AdminPostsProps> = ({ posts, onStartEdit, onBl
                   
                   {/* Share Preview Action */}
                   <span className="text-zinc-800">|</span>
-                  <a
-                    href={`/?id=${post.encryptedHash}`}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="text-[9px] text-emerald-400 hover:text-emerald-300 hover:underline flex items-center gap-0.5 font-bold uppercase"
+                  <button
+                    onClick={() => {
+                      window.history.pushState({}, '', `/?id=${post.encryptedHash}`);
+                      window.dispatchEvent(new PopStateEvent('popstate'));
+                    }}
+                    className="text-[9px] text-emerald-400 hover:text-emerald-300 hover:underline flex items-center gap-0.5 font-bold uppercase cursor-pointer"
                   >
                     <ExternalLink className="w-2.5 h-2.5" /> Link
-                  </a>
+                  </button>
                 </div>
               </div>
 
