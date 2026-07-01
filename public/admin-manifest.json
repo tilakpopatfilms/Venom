@@ -1,4 +1,6 @@
 {
+  "id": "venom-admin",
+  "scope": "/admin",
   "name": "Venom Admin",
   "short_name": "Venom Admin",
   "description": "Administrative Control and Safety Enforcement node for Only Venom.",

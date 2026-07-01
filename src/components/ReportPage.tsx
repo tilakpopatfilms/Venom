@@ -4,7 +4,7 @@ import { db } from '../firebase';
 import { getClientIp } from '../utils/ip';
 import { submitPostReport } from '../utils/reports';
 import { checkIpBlockStatus, BlockStatus } from '../utils/blockChecker';
-import { ShieldAlert, ChevronLeft, Search, Eye, AlertCircle, CheckCircle, RefreshCw, AlertTriangle, ExternalLink } from 'lucide-react';
+import { ShieldAlert, ChevronLeft, Search, Eye, AlertCircle, CheckCircle, RefreshCw, AlertTriangle, ExternalLink, Download } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import VenomCard from './VenomCard';
 
@@ -166,20 +166,41 @@ export default function ReportPage({ onBackToHome }: ReportPageProps) {
             </div>
           </div>
           
-          <button
-            onClick={() => {
-              if (onBackToHome) {
-                onBackToHome();
-              } else {
-                window.history.pushState({}, '', '/');
-                window.dispatchEvent(new PopStateEvent('popstate'));
-              }
-            }}
-            className="px-3 py-1 bg-zinc-950 hover:bg-zinc-900 border border-zinc-900 text-zinc-400 hover:text-zinc-200 text-[10px] font-bold rounded transition-colors uppercase tracking-wider flex items-center gap-1 cursor-pointer"
-          >
-            <ChevronLeft className="w-3.5 h-3.5" />
-            <span>Feed Home</span>
-          </button>
+          <div className="flex items-center gap-2">
+            <button
+              onClick={() => {
+                const pwaPrompt = (window as any).pwaInstallPrompt;
+                if (pwaPrompt) {
+                  pwaPrompt.prompt();
+                  pwaPrompt.userChoice.then((choiceResult: any) => {
+                    if (choiceResult.outcome === 'accepted') {
+                      console.log('User installed Main PWA');
+                    }
+                  });
+                } else {
+                  alert("To Download the Venom App:\n\n1. In your browser's menu (e.g. Chrome's three dots, or Safari's Share icon), click 'Add to Home Screen' or 'Install App'.\n\nThis PWA runs fully as a standalone app.");
+                }
+              }}
+              className="px-3 py-1 bg-emerald-950/20 hover:bg-emerald-950/40 border border-emerald-500/20 text-emerald-400 hover:text-emerald-300 text-[10px] font-bold rounded transition-colors uppercase tracking-wider cursor-pointer flex items-center gap-1"
+            >
+              <Download className="w-3 h-3" />
+              <span>Download App</span>
+            </button>
+            <button
+              onClick={() => {
+                if (onBackToHome) {
+                  onBackToHome();
+                } else {
+                  window.history.pushState({}, '', '/');
+                  window.dispatchEvent(new PopStateEvent('popstate'));
+                }
+              }}
+              className="px-3 py-1 bg-zinc-950 hover:bg-zinc-900 border border-zinc-900 text-zinc-400 hover:text-zinc-200 text-[10px] font-bold rounded transition-colors uppercase tracking-wider flex items-center gap-1 cursor-pointer"
+            >
+              <ChevronLeft className="w-3.5 h-3.5" />
+              <span>Feed Home</span>
+            </button>
+          </div>
         </div>
       </header>
 

@@ -4,7 +4,7 @@
  */
 
 import { useState } from 'react';
-import { Shield, RefreshCw, Menu, HelpCircle, ShieldAlert, BookOpen } from 'lucide-react';
+import { Shield, RefreshCw, Menu, HelpCircle, ShieldAlert, BookOpen, Download } from 'lucide-react';
 
 interface HeaderProps {
   onNewPostClick: () => void;
@@ -92,6 +92,26 @@ export default function Header({
                 >
                   <ShieldAlert className="w-3.5 h-3.5 text-rose-500/60" />
                   <span>Report Post</span>
+                </button>
+                <button
+                  onClick={() => {
+                    setShowMenuDropdown(false);
+                    const pwaPrompt = (window as any).pwaInstallPrompt;
+                    if (pwaPrompt) {
+                      pwaPrompt.prompt();
+                      pwaPrompt.userChoice.then((choiceResult: any) => {
+                        if (choiceResult.outcome === 'accepted') {
+                          console.log('User installed Main PWA from Header');
+                        }
+                      });
+                    } else {
+                      alert("To Download the Venom App:\n\n1. In your browser's menu (e.g. Chrome's three dots, or Safari's Share icon), click 'Add to Home Screen' or 'Install App'.\n\nThis PWA runs fully as a standalone app.");
+                    }
+                  }}
+                  className="w-full text-left px-3.5 py-2 hover:bg-zinc-900 hover:text-emerald-400 flex items-center gap-2 cursor-pointer transition-colors block font-mono border-t border-zinc-900/60"
+                >
+                  <Download className="w-3.5 h-3.5 text-emerald-500/60" />
+                  <span>Download App</span>
                 </button>
               </div>
             )}

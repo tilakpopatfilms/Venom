@@ -1,4 +1,6 @@
 {
+  "id": "venom-main",
+  "scope": "/",
   "name": "Venom",
   "short_name": "Venom",
   "description": "Fully anonymous, end-to-end encrypted style decentralized social space for unfiltered thoughts, polls, and Q&A.",

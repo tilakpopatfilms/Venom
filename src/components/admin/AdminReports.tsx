@@ -642,6 +642,27 @@ export default function AdminReports() {
           </div>
 
           <div className="flex items-center gap-2 flex-wrap justify-center">
+            {/* Download Admin App button */}
+            <button
+              onClick={() => {
+                const pwaPrompt = (window as any).pwaInstallPrompt;
+                if (pwaPrompt) {
+                  pwaPrompt.prompt();
+                  pwaPrompt.userChoice.then((choiceResult: any) => {
+                    if (choiceResult.outcome === 'accepted') {
+                      console.log('Admin installed PWA from Reports terminal');
+                    }
+                  });
+                } else {
+                  alert("To Download the Venom Admin App:\n\n1. In your browser's menu (e.g. Chrome's three dots, or Safari's Share icon), click 'Add to Home Screen' or 'Install App'.\n\nThis Admin PWA runs fully in both Landscape and Portrait orientations as a standalone app.");
+                }
+              }}
+              className="px-3 py-1 bg-emerald-950/20 hover:bg-emerald-950/40 border border-emerald-500/20 text-emerald-400 hover:text-emerald-300 text-[10px] font-bold rounded transition-colors uppercase tracking-wider flex items-center gap-1 cursor-pointer"
+            >
+              <Download className="w-3 h-3" />
+              <span>Download Admin App</span>
+            </button>
+
             {/* Redirect back to homepage */}
             <button
               onClick={() => {

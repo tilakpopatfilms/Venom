@@ -6,10 +6,6 @@
     <meta name="theme-color" content="#09090b" />
     <meta name="apple-mobile-web-app-capable" content="yes" />
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
-    <link id="pwa-manifest-link" rel="manifest" href="/manifest.json" />
-    <link id="favicon-link-32" rel="icon" type="image/png" href="https://i.ibb.co/jkzWK6V6/14895-removebg-preview.png?v=2" sizes="32x32" />
-    <link id="favicon-link-16" rel="icon" type="image/png" href="https://i.ibb.co/jkzWK6V6/14895-removebg-preview.png?v=2" sizes="16x16" />
-    <link id="apple-icon-link" rel="apple-touch-icon" href="https://i.ibb.co/jkzWK6V6/14895-removebg-preview.png?v=2" />
     <title>Venom | Decentralized Anonymous Grid</title>
     <script>
       (function() {
@@ -35,10 +31,35 @@
         }
         
         try {
-          document.getElementById('pwa-manifest-link').href = manifestUrl;
-          document.getElementById('favicon-link-32').href = faviconUrl;
-          document.getElementById('favicon-link-16').href = faviconUrl;
-          document.getElementById('apple-icon-link').href = faviconUrl;
+          // Dynamically create and append the links to head to avoid the browser pre-loading /manifest.json by default on /admin route
+          var manifestLink = document.createElement('link');
+          manifestLink.id = 'pwa-manifest-link';
+          manifestLink.rel = 'manifest';
+          manifestLink.href = manifestUrl;
+          document.head.appendChild(manifestLink);
+
+          var favicon32 = document.createElement('link');
+          favicon32.id = 'favicon-link-32';
+          favicon32.rel = 'icon';
+          favicon32.type = 'image/png';
+          favicon32.sizes = '32x32';
+          favicon32.href = faviconUrl + '?v=2';
+          document.head.appendChild(favicon32);
+
+          var favicon16 = document.createElement('link');
+          favicon16.id = 'favicon-link-16';
+          favicon16.rel = 'icon';
+          favicon16.type = 'image/png';
+          favicon16.sizes = '16x16';
+          favicon16.href = faviconUrl + '?v=2';
+          document.head.appendChild(favicon16);
+
+          var appleIcon = document.createElement('link');
+          appleIcon.id = 'apple-icon-link';
+          appleIcon.rel = 'apple-touch-icon';
+          appleIcon.href = faviconUrl + '?v=2';
+          document.head.appendChild(appleIcon);
+
           document.title = titleText;
         } catch(e) {
           console.error('Error executing head initialization script:', e);
