@@ -37,11 +37,13 @@ import {
   getPollVotedOption, 
   setPollVotedOptionStore,
   getPostReaction,
-  setPostReactionStore
+  setPostReactionStore,
+  getInteractionState,
+  saveInteractionState
 } from '../utils/storage';
 import { db, handleFirestoreError, OperationType } from '../firebase';
 import { doc, updateDoc, increment, setDoc, deleteDoc } from 'firebase/firestore';
-import { getClientIp } from '../utils/ip';
+import { getClientIp, getDeviceImei } from '../utils/ip';
 import { copyToClipboard } from '../utils/clipboard';
 import { formatTimeAgo } from '../utils/time';
 import CommentsPane from './CommentsPane';
@@ -91,6 +93,12 @@ export default function VenomCard({
   const [showMobileReactions, setShowMobileReactions] = useState(false);
   const [floatingEmojis, setFloatingEmojis] = useState<FloatingEmoji[]>([]);
 
+  // Local locks to prevent concurrent rapid double clicks
+  const [isLiking, setIsLiking] = useState(false);
+  const [isVoting, setIsVoting] = useState(false);
+  const [isVotingPoll, setIsVotingPoll] = useState(false);
+  const [isReactingState, setIsReactingState] = useState(false);
+
   React.useEffect(() => {
     setCommentsCount(post.commentsCount);
   }, [post.commentsCount]);
@@ -115,22 +123,27 @@ export default function VenomCard({
       if (onBlockedActionTriggered) onBlockedActionTriggered();
       return;
     }
+    if (isLiking) return;
+    setIsLiking(true);
+
     const isLikedNow = togglePostLikeStore(post.id);
     const incAmount = isLikedNow ? 1 : -1;
 
     // Instantly notify parent for visual response
     if (onPostUpdate) {
-      onPostUpdate({ likesCount: post.likesCount + incAmount });
+      onPostUpdate({ likesCount: Math.max(0, post.likesCount + incAmount) });
     }
 
     try {
       const userIp = await getClientIp();
-      const interactionRef = doc(db, 'interactions', `${post.id}_${userIp}_like`);
+      const deviceImei = getDeviceImei();
+      const interactionRef = doc(db, 'interactions', `${post.id}_${deviceImei}_like`);
       const postRef = doc(db, 'posts', post.id);
 
       if (isLikedNow) {
         await setDoc(interactionRef, {
           ip: userIp,
+          imei: deviceImei,
           postId: post.id,
           type: 'like',
           createdAt: new Date().toISOString()
@@ -149,6 +162,8 @@ export default function VenomCard({
         onPostUpdate({ likesCount: post.likesCount });
       }
       handleFirestoreError(error, OperationType.UPDATE, `posts/${post.id}`);
+    } finally {
+      setIsLiking(false);
     }
   };
 
@@ -157,6 +172,9 @@ export default function VenomCard({
       if (onBlockedActionTriggered) onBlockedActionTriggered();
       return;
     }
+    if (isVoting) return;
+    setIsVoting(true);
+
     let upvoteInc = 0;
     let downvoteInc = 0;
 
@@ -180,14 +198,15 @@ export default function VenomCard({
     // Instantly notify parent for optimistic update
     if (onPostUpdate) {
       onPostUpdate({
-        upvotesCount: post.upvotesCount + upvoteInc,
-        downvotesCount: post.downvotesCount + downvoteInc,
+        upvotesCount: Math.max(0, post.upvotesCount + upvoteInc),
+        downvotesCount: Math.max(0, post.downvotesCount + downvoteInc),
       });
     }
 
     try {
       const userIp = await getClientIp();
-      const interactionRef = doc(db, 'interactions', `${post.id}_${userIp}_vote`);
+      const deviceImei = getDeviceImei();
+      const interactionRef = doc(db, 'interactions', `${post.id}_${deviceImei}_vote`);
       const postRef = doc(db, 'posts', post.id);
 
       if (userVote === direction) {
@@ -197,6 +216,7 @@ export default function VenomCard({
         // Set new/switched vote
         await setDoc(interactionRef, {
           ip: userIp,
+          imei: deviceImei,
           postId: post.id,
           type: 'vote',
           direction,
@@ -219,6 +239,8 @@ export default function VenomCard({
         });
       }
       handleFirestoreError(error, OperationType.UPDATE, `posts/${post.id}`);
+    } finally {
+      setIsVoting(false);
     }
   };
 
@@ -227,7 +249,8 @@ export default function VenomCard({
       if (onBlockedActionTriggered) onBlockedActionTriggered();
       return;
     }
-    if (isVotedPoll) return; // Prevent double voting
+    if (isVotedPoll || isVotingPoll) return; // Prevent double voting
+    setIsVotingPoll(true);
 
     setPollVotedOptionStore(post.id, optionIndex);
 
@@ -240,11 +263,13 @@ export default function VenomCard({
 
     try {
       const userIp = await getClientIp();
-      const interactionRef = doc(db, 'interactions', `${post.id}_${userIp}_poll`);
+      const deviceImei = getDeviceImei();
+      const interactionRef = doc(db, 'interactions', `${post.id}_${deviceImei}_poll`);
       const postRef = doc(db, 'posts', post.id);
 
       await setDoc(interactionRef, {
         ip: userIp,
+        imei: deviceImei,
         postId: post.id,
         type: 'poll',
         optionIndex,
@@ -257,12 +282,17 @@ export default function VenomCard({
       });
     } catch (error) {
       // Revert on error
-      localStorage.removeItem(`venom_poll_vote_${post.id}`); // Clear specific poll vote storage manually
+      const state = getInteractionState();
+      delete state.votedPolls[post.id];
+      saveInteractionState(state);
+
       const revertedState = { ...pollVotes };
       if (onPostUpdate) {
         onPostUpdate({ pollVotes: revertedState });
       }
       handleFirestoreError(error, OperationType.UPDATE, `posts/${post.id}`);
+    } finally {
+      setIsVotingPoll(false);
     }
   };
 
@@ -373,6 +403,9 @@ Use it now: https://myvenom.vercel.app`;
       if (onBlockedActionTriggered) onBlockedActionTriggered();
       return;
     }
+    if (isReactingState) return;
+    setIsReactingState(true);
+
     const oldReaction = activeReaction;
     const isRemove = oldReaction === reactionKey;
     const nextReaction = isRemove ? null : reactionKey;
@@ -401,7 +434,8 @@ Use it now: https://myvenom.vercel.app`;
 
     try {
       const userIp = await getClientIp();
-      const interactionRef = doc(db, 'interactions', `${post.id}_${userIp}_reaction`);
+      const deviceImei = getDeviceImei();
+      const interactionRef = doc(db, 'interactions', `${post.id}_${deviceImei}_reaction`);
       const postRef = doc(db, 'posts', post.id);
 
       if (isRemove) {
@@ -412,6 +446,7 @@ Use it now: https://myvenom.vercel.app`;
       } else {
         await setDoc(interactionRef, {
           ip: userIp,
+          imei: deviceImei,
           postId: post.id,
           type: 'reaction',
           reactionKey,
@@ -434,6 +469,8 @@ Use it now: https://myvenom.vercel.app`;
         onPostUpdate({ reactions: post.reactions });
       }
       handleFirestoreError(error, OperationType.UPDATE, `posts/${post.id}`);
+    } finally {
+      setIsReactingState(false);
     }
   };
 

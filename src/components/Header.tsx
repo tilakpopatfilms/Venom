@@ -96,15 +96,8 @@ export default function Header({
                 <button
                   onClick={() => {
                     setShowMenuDropdown(false);
-                    const pwaPrompt = (window as any).pwaInstallPrompt;
-                    if (pwaPrompt) {
-                      pwaPrompt.prompt();
-                      pwaPrompt.userChoice.then((choiceResult: any) => {
-                        if (choiceResult.outcome === 'accepted') {
-                          console.log('User installed Main PWA from Header');
-                        }
-                      });
-                    } else {
+                    const installed = (window as any).triggerPwaInstall && (window as any).triggerPwaInstall();
+                    if (!installed) {
                       alert("To Download the Venom App:\n\n1. In your browser's menu (e.g. Chrome's three dots, or Safari's Share icon), click 'Add to Home Screen' or 'Install App'.\n\nThis PWA runs fully as a standalone app.");
                     }
                   }}

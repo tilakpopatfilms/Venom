@@ -9,6 +9,13 @@
     <title>Venom | Decentralized Anonymous Grid</title>
     <script>
       (function() {
+        // Capture PWA install prompt as early as possible
+        window.addEventListener('beforeinstallprompt', function(e) {
+          e.preventDefault();
+          window.pwaInstallPrompt = e;
+          window.dispatchEvent(new CustomEvent('pwa-prompt-available', { detail: e }));
+        });
+
         var path = window.location.pathname;
         var isAdmin = path.startsWith('/admin') || path.includes('admin');
         var manifestUrl = isAdmin ? '/admin-manifest.json' : '/manifest.json';

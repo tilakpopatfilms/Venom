@@ -17,7 +17,7 @@ import {
 } from 'firebase/firestore';
 import { db, handleFirestoreError, OperationType } from './firebase';
 import { Post } from './types';
-import { getClientIp } from './utils/ip';
+import { getClientIp, getDeviceImei } from './utils/ip';
 import Header from './components/Header';
 import VenomCard from './components/VenomCard';
 import NewVenomModal from './components/NewVenomModal';
@@ -66,12 +66,25 @@ export default function App() {
   const [userIp, setUserIp] = useState<string>('');
   const [showQuarantineModal, setShowQuarantineModal] = useState(false);
 
+  // Helper to parse search parameters directly from currentPath to ensure perfect React state reactivity
+  const getQueryParamFromPath = (path: string, paramName: string) => {
+    try {
+      const queryIndex = path.indexOf('?');
+      if (queryIndex === -1) return null;
+      const params = new URLSearchParams(path.substring(queryIndex));
+      return params.get(paramName);
+    } catch (e) {
+      return null;
+    }
+  };
+
   // Parse path for single post sharing
   const postMatch = currentPath.match(/^\/post\/([a-zA-Z0-9_-]+)/) || currentPath.match(/^\/venom\/([a-zA-Z0-9_-]+)/);
   const sharedPostId = postMatch ? postMatch[1] : null;
 
-  const urlParams = new URLSearchParams(window.location.search);
-  const sharedHashId = (currentPath.startsWith('/report') || currentPath.startsWith('/admin')) ? null : urlParams.get('id');
+  const sharedHashId = (currentPath.startsWith('/report') || currentPath.startsWith('/admin'))
+    ? null
+    : (getQueryParamFromPath(currentPath, 'id') || new URLSearchParams(window.location.search).get('id'));
 
   const handleNewPostClick = () => {
     if (blockStatus?.isBlocked) {
@@ -173,23 +186,24 @@ export default function App() {
     }
 
     if (isStandalone) {
+      const search = window.location.search || '';
       if (activeApp === 'admin') {
         const sessionStarted = sessionStorage.getItem('venom_admin_session_active');
         if (!sessionStarted) {
           sessionStorage.setItem('venom_admin_session_active', 'true');
           sessionStorage.removeItem('venom_main_session_active'); // Keep separate
-          // For a fresh session of Admin PWA, force the route to /admin
-          window.history.replaceState({}, '', '/admin');
-          setCurrentPath('/admin');
+          // For a fresh session of Admin PWA, force the route to /admin and preserve query parameters
+          window.history.replaceState({}, '', `/admin${search}`);
+          setCurrentPath(`/admin${search}`);
         }
       } else {
         const sessionStarted = sessionStorage.getItem('venom_main_session_active');
         if (!sessionStarted) {
           sessionStorage.setItem('venom_main_session_active', 'true');
           sessionStorage.removeItem('venom_admin_session_active'); // Keep separate
-          // For a fresh session of Main PWA, force the route to /
-          window.history.replaceState({}, '', '/');
-          setCurrentPath('/');
+          // For a fresh session of Main PWA, force the route to / and preserve query parameters
+          window.history.replaceState({}, '', `/${search}`);
+          setCurrentPath(`/${search}`);
         }
       }
     }
@@ -202,8 +216,33 @@ export default function App() {
       (window as any).pwaInstallPrompt = e;
     };
     window.addEventListener('beforeinstallprompt', handleBeforeInstallPrompt);
+
+    // Also listen to early-loaded prompt custom event from index.html
+    const handleCustomPrompt = (e: any) => {
+      if (e.detail) {
+        (window as any).pwaInstallPrompt = e.detail;
+      }
+    };
+    window.addEventListener('pwa-prompt-available', handleCustomPrompt);
+
+    // Expose a robust global function for automatic PWA installation triggers
+    (window as any).triggerPwaInstall = () => {
+      const promptEvent = (window as any).pwaInstallPrompt;
+      if (promptEvent) {
+        promptEvent.prompt();
+        promptEvent.userChoice.then((choiceResult: any) => {
+          if (choiceResult.outcome === 'accepted') {
+            console.log('PWA installation accepted by user');
+          }
+        });
+        return true;
+      }
+      return false;
+    };
+
     return () => {
       window.removeEventListener('beforeinstallprompt', handleBeforeInstallPrompt);
+      window.removeEventListener('pwa-prompt-available', handleCustomPrompt);
     };
   }, []);
 
@@ -345,25 +384,36 @@ export default function App() {
     return () => unsubscribe();
   }, []);
 
-  // Load and synchronize IP-based interactions on boot to lock votes and likes securely on device-level
+  // Load and synchronize IMEI & IP-based interactions on boot to lock votes and likes securely on device-level
   useEffect(() => {
     const syncInteractions = async () => {
       if (!db) return;
       try {
         const userIp = await getClientIp();
-        const q = query(collection(db, 'interactions'), where('ip', '==', userIp));
-        const snap = await getDocs(q);
+        const deviceImei = getDeviceImei();
+        
+        // Query by IMEI primarily (100% stable device-level persistent tracking)
+        const qImei = query(collection(db, 'interactions'), where('imei', '==', deviceImei));
+        // Query by IP as legacy fallback (in case IMEI is not set on older documents)
+        const qIp = query(collection(db, 'interactions'), where('ip', '==', userIp));
+        
+        const [snapImei, snapIp] = await Promise.all([
+          getDocs(qImei),
+          getDocs(qIp)
+        ]);
         
         const likedPosts: string[] = [];
         const votedPosts: { [postId: string]: 'up' | 'down' } = {};
         const votedPolls: { [postId: string]: number } = {};
         const reactedPosts: { [postId: string]: string } = {};
         
-        snap.forEach((docSnap) => {
+        const processDoc = (docSnap: any) => {
           const data = docSnap.data();
           const pId = data.postId;
+          if (!pId) return;
+          
           if (data.type === 'like') {
-            likedPosts.push(pId);
+            if (!likedPosts.includes(pId)) likedPosts.push(pId);
           } else if (data.type === 'vote') {
             votedPosts[pId] = data.direction;
           } else if (data.type === 'poll') {
@@ -371,7 +421,10 @@ export default function App() {
           } else if (data.type === 'reaction') {
             reactedPosts[pId] = data.reactionKey;
           }
-        });
+        };
+
+        snapImei.forEach(processDoc);
+        snapIp.forEach(processDoc);
         
         const existing = localStorage.getItem('venom_user_interactions');
         let parsed: any = { likedComments: [], likedReplies: [] };
