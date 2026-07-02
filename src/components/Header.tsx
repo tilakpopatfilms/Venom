@@ -96,9 +96,8 @@ export default function Header({
                 <button
                   onClick={() => {
                     setShowMenuDropdown(false);
-                    const installed = (window as any).triggerPwaInstall && (window as any).triggerPwaInstall();
-                    if (!installed) {
-                      alert("To Download the Venom App:\n\n1. In your browser's menu (e.g. Chrome's three dots, or Safari's Share icon), click 'Add to Home Screen' or 'Install App'.\n\nThis PWA runs fully as a standalone app.");
+                    if ((window as any).triggerPwaInstall) {
+                      (window as any).triggerPwaInstall('main');
                     }
                   }}
                   className="w-full text-left px-3.5 py-2 hover:bg-zinc-900 hover:text-emerald-400 flex items-center gap-2 cursor-pointer transition-colors block font-mono border-t border-zinc-900/60"

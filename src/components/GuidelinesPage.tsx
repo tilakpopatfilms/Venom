@@ -36,9 +36,8 @@ export default function GuidelinesPage({ onBackToHome }: GuidelinesPageProps) {
           <div className="flex items-center gap-2">
             <button
               onClick={() => {
-                const installed = (window as any).triggerPwaInstall && (window as any).triggerPwaInstall();
-                if (!installed) {
-                  alert("To Download the Venom App:\n\n1. In your browser's menu (e.g. Chrome's three dots, or Safari's Share icon), click 'Add to Home Screen' or 'Install App'.\n\nThis PWA runs fully as a standalone app.");
+                if ((window as any).triggerPwaInstall) {
+                  (window as any).triggerPwaInstall('main');
                 }
               }}
               className="px-3 py-1 bg-emerald-950/20 hover:bg-emerald-950/40 border border-emerald-500/20 text-emerald-400 hover:text-emerald-300 text-[10px] font-bold rounded transition-colors uppercase tracking-wider cursor-pointer flex items-center gap-1"

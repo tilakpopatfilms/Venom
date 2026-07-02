@@ -137,9 +137,8 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ posts, onNavigat
           <div className="flex items-center gap-2 flex-wrap justify-center">
             <button
               onClick={() => {
-                const installed = (window as any).triggerPwaInstall && (window as any).triggerPwaInstall();
-                if (!installed) {
-                  alert("To Download the Venom Admin App:\n\n1. In your browser's menu (e.g. Chrome's three dots, or Safari's Share icon), click 'Add to Home Screen' or 'Install App'.\n\nThis Admin PWA runs fully in both Landscape and Portrait orientations as a standalone app.");
+                if ((window as any).triggerPwaInstall) {
+                  (window as any).triggerPwaInstall('admin');
                 }
               }}
               className="px-3 py-1 bg-emerald-950/20 hover:bg-emerald-950/40 border border-emerald-500/20 text-emerald-400 hover:text-emerald-300 text-[10px] font-bold rounded transition-colors uppercase tracking-wider cursor-pointer flex items-center gap-1"

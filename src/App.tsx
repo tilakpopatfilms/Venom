@@ -46,6 +46,7 @@ import { motion, AnimatePresence } from 'motion/react';
 import { getOperativeID } from './utils/crypto';
 import { checkIpBlockStatus, BlockStatus } from './utils/blockChecker';
 import QuarantineNoticeModal from './components/QuarantineNoticeModal';
+import { InstallPwaModal } from './components/InstallPwaModal';
 
 export default function App() {
   const [posts, setPosts] = useState<Post[]>([]);
@@ -65,6 +66,18 @@ export default function App() {
   const [blockStatus, setBlockStatus] = useState<BlockStatus | null>(null);
   const [userIp, setUserIp] = useState<string>('');
   const [showQuarantineModal, setShowQuarantineModal] = useState(false);
+  const [showInstallPwaModal, setShowInstallPwaModal] = useState(false);
+  const [installPwaAppType, setInstallPwaAppType] = useState<'main' | 'admin'>('main');
+
+  useEffect(() => {
+    (window as any).openPwaInstallModal = (type: 'main' | 'admin' = 'main') => {
+      setInstallPwaAppType(type);
+      setShowInstallPwaModal(true);
+    };
+    return () => {
+      delete (window as any).openPwaInstallModal;
+    };
+  }, []);
 
   // Helper to parse search parameters directly from currentPath to ensure perfect React state reactivity
   const getQueryParamFromPath = (path: string, paramName: string) => {
@@ -234,7 +247,7 @@ export default function App() {
     window.addEventListener('pwa-prompt-available', handleCustomPrompt);
 
     // Expose a robust global function for automatic PWA installation triggers
-    (window as any).triggerPwaInstall = () => {
+    (window as any).triggerPwaInstall = (appType: 'main' | 'admin' = 'main') => {
       const promptEvent = (window as any).pwaInstallPrompt;
       if (promptEvent) {
         promptEvent.prompt();
@@ -243,6 +256,11 @@ export default function App() {
             console.log('PWA installation accepted by user');
           }
         });
+        return true;
+      }
+      // If native prompt is not available (e.g., inside iframe or already installed), open the premium modal
+      if ((window as any).openPwaInstallModal) {
+        (window as any).openPwaInstallModal(appType);
         return true;
       }
       return false;
@@ -970,6 +988,12 @@ export default function App() {
       <InfoModals 
         type={activeInfoModal} 
         onClose={() => setActiveInfoModal(null)} 
+      />
+
+      <InstallPwaModal 
+        isOpen={showInstallPwaModal} 
+        onClose={() => setShowInstallPwaModal(false)} 
+        appType={installPwaAppType}
       />
 
     </motion.div>
