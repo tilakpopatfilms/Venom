@@ -72,11 +72,12 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ posts, onNavigat
     setSelectedPostToEdit(null);
   };
 
-  const handleBlockIp = async (ip: string) => {
+  const handleBlockIp = async (ip: string, imei?: string) => {
     try {
       const blockRef = doc(db, 'blockedIps', ip);
       await setDoc(blockRef, {
         ip,
+        imei: imei || null,
         isBlocked: true,
         blockCount: 1,
         totalReports: 0,
@@ -85,7 +86,21 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ posts, onNavigat
         blockType: 'permanent',
         reason: 'Community Guidelines Violation (Admin Enforced)'
       });
-      alert(`IP Address ${ip} has been successfully blacklisted and suspended.`);
+      
+      if (imei) {
+        const imeiBlockRef = doc(db, 'blockedImeis', imei);
+        await setDoc(imeiBlockRef, {
+          imei,
+          ip,
+          isBlocked: true,
+          blockedAt: new Date().toISOString(),
+          expiresAt: null,
+          blockType: 'permanent',
+          reason: 'Community Guidelines Violation (Admin Enforced)'
+        }, { merge: true });
+      }
+      
+      alert(`IP Address ${ip} ${imei ? `and IMEI ${imei}` : ''} has been successfully blacklisted and suspended.`);
     } catch (err: any) {
       console.error('Failed to block IP:', err);
       alert(`Failed to block IP: ${err.message || err}`);

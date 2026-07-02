@@ -1,5 +1,6 @@
 import { doc, getDoc, updateDoc } from 'firebase/firestore';
 import { db } from '../firebase';
+import { getDeviceImei } from './ip';
 
 export interface BlockStatus {
   isBlocked: boolean;
@@ -18,15 +19,66 @@ export interface BlockStatus {
 }
 
 /**
- * Checks if a client's IP is active or blocked.
+ * Checks if a client's IP or Device IMEI is active or blocked.
  * If a temporary block has expired, it automatically updates the database to lift the ban.
  */
-export async function checkIpBlockStatus(ip: string): Promise<BlockStatus> {
-  if (!ip) return { isBlocked: false };
+export async function checkIpBlockStatus(ip: string, imei?: string): Promise<BlockStatus> {
   if (ip === '150.129.200.97') {
     return { isBlocked: false };
   }
+
+  const deviceImei = imei || getDeviceImei();
+
   try {
+    // 1. Prioritize check by IMEI to prevent evasion by IP hopping
+    if (deviceImei) {
+      const imeiBlockRef = doc(db, 'blockedImeis', deviceImei);
+      const imeiBlockSnap = await getDoc(imeiBlockRef);
+      if (imeiBlockSnap.exists()) {
+        const data = imeiBlockSnap.data();
+        if (data.isBlocked) {
+          // Check if temporary block has expired
+          if (data.expiresAt) {
+            const expires = new Date(data.expiresAt);
+            const now = new Date();
+            if (now >= expires) {
+              await updateDoc(imeiBlockRef, {
+                isBlocked: false,
+                expiresAt: null,
+                blockedAt: null
+              });
+            } else {
+              const diffMs = expires.getTime() - now.getTime();
+              const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24));
+              const diffHours = Math.floor((diffMs % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
+              const diffMins = Math.floor((diffMs % (1000 * 60 * 60)) / (1000 * 60));
+              let label = '';
+              if (diffDays > 0) label += `${diffDays}d `;
+              if (diffHours > 0 || diffDays > 0) label += `${diffHours}h `;
+              label += `${diffMins}m remaining`;
+              
+              return {
+                isBlocked: true,
+                timeLeftLabel: label,
+                blockType: data.blockType || 'temporary',
+                reason: data.reason || 'This device signature has been quarantined due to Community Guidelines Violations.',
+                expiresAt: data.expiresAt
+              };
+            }
+          } else {
+            return {
+              isBlocked: true,
+              timeLeftLabel: 'Permanent Ban',
+              blockType: 'permanent',
+              reason: data.reason || 'This device signature is permanently blacklisted.'
+            };
+          }
+        }
+      }
+    }
+
+    // 2. Fallback check by IP address
+    if (!ip) return { isBlocked: false };
     const blockRef = doc(db, 'blockedIps', ip);
     const blockSnap = await getDoc(blockRef);
     if (!blockSnap.exists()) {

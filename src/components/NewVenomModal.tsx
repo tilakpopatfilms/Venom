@@ -187,10 +187,11 @@ export default function NewVenomModal({ onClose, onPostCreated }: NewVenomModalP
 
     try {
       const userIp = await getClientIp();
+      const userImei = getDeviceImei();
       const deviceDetails = getDeviceDetails();
 
-      // Check if user is blocked by IP address before writing to firestore
-      const block = await checkIpBlockStatus(userIp);
+      // Check if user is blocked by IP address or IMEI before writing to firestore
+      const block = await checkIpBlockStatus(userIp, userImei);
       if (block.isBlocked) {
         setErrorMsg(`YOUR DEVICE IP HAS BEEN SUSPENDED FROM POSTING VENOMS. Status: ${block.timeLeftLabel}. Reason: ${block.reason || 'Guidelines violation'}`);
         setIsSubmitting(false);

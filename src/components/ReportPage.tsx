@@ -226,6 +226,48 @@ export default function ReportPage({ onBackToHome }: ReportPageProps) {
           </p>
         </div>
 
+        {/* Dynamic Tester/Device Signature Panel */}
+        <div className="border border-zinc-900 bg-zinc-950/40 p-3 rounded-lg flex flex-wrap items-center justify-between gap-3 text-[10px] font-mono">
+          <div className="space-y-1">
+            <span className="text-zinc-500 uppercase tracking-wider block font-bold text-[8px]">ACTIVE CLIENT NODE SIGNATURE:</span>
+            <div className="flex items-center gap-2 flex-wrap text-zinc-400">
+              <span>IP: <strong className="text-zinc-300 font-sans">{userIp || 'Resolving...'}</strong></span>
+              <span className="text-zinc-800">|</span>
+              <span>IMEI: <strong className="text-rose-400">{localStorage.getItem('venom_device_imei') || '350000000000000'}</strong></span>
+            </div>
+          </div>
+          <button
+            type="button"
+            onClick={async () => {
+              // Generate a brand new random simulated IP
+              const o1 = Math.floor(Math.random() * 100) + 80;
+              const o2 = Math.floor(Math.random() * 150) + 10;
+              const o3 = Math.floor(Math.random() * 200) + 1;
+              const o4 = Math.floor(Math.random() * 250) + 1;
+              const newIp = `${o1}.${o2}.${o3}.${o4}`;
+              localStorage.setItem('venom_simulated_client_ip', newIp);
+              setUserIp(newIp);
+
+              // Generate a brand new random simulated IMEI
+              let digits = '35';
+              for (let i = 0; i < 13; i++) {
+                digits += Math.floor(Math.random() * 10).toString();
+              }
+              localStorage.setItem('venom_device_imei', digits);
+              
+              // Recalculate block status for the new IP/IMEI
+              const block = await checkIpBlockStatus(newIp, digits);
+              setBlockStatus(block);
+              
+              alert(`Device Identity Rotated!\n\nNew Simulated IP: ${newIp}\nNew Simulated IMEI: ${digits}\n\nYou can now submit reports as a completely distinct device!`);
+            }}
+            className="px-2.5 py-1 bg-zinc-900 hover:bg-zinc-850 border border-zinc-800 hover:border-zinc-750 text-emerald-400 text-[9px] font-bold rounded uppercase tracking-wider cursor-pointer flex items-center gap-1"
+          >
+            <RefreshCw className="w-3 h-3 text-emerald-500" />
+            <span>Rotate Device Identity</span>
+          </button>
+        </div>
+
         <AnimatePresence mode="wait">
           {submitResult ? (
             /* SUCCESS PANEL */

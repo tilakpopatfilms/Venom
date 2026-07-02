@@ -42,7 +42,7 @@ import {
   saveInteractionState
 } from '../utils/storage';
 import { db, handleFirestoreError, OperationType } from '../firebase';
-import { doc, updateDoc, increment, setDoc, deleteDoc } from 'firebase/firestore';
+import { doc, updateDoc, increment, setDoc, deleteDoc, getDoc, runTransaction } from 'firebase/firestore';
 import { getClientIp, getDeviceImei } from '../utils/ip';
 import { copyToClipboard } from '../utils/clipboard';
 import { formatTimeAgo } from '../utils/time';
@@ -98,6 +98,7 @@ export default function VenomCard({
   const [isVoting, setIsVoting] = useState(false);
   const [isVotingPoll, setIsVotingPoll] = useState(false);
   const [isReactingState, setIsReactingState] = useState(false);
+  const [dummyTrigger, setDummyTrigger] = useState(0);
 
   React.useEffect(() => {
     setCommentsCount(post.commentsCount);
@@ -105,6 +106,108 @@ export default function VenomCard({
 
   React.useEffect(() => {
     setActiveReaction(getPostReaction(post.id));
+  }, [post.id]);
+
+  React.useEffect(() => {
+    let active = true;
+    const syncInteractions = async () => {
+      try {
+        const deviceImei = getDeviceImei();
+        if (!deviceImei) return;
+
+        // Fetch like interaction
+        const likeRef = doc(db, 'interactions', `${post.id}_${deviceImei}_like`);
+        const likeSnap = await getDoc(likeRef);
+        if (!active) return;
+        
+        const state = getInteractionState();
+        let changed = false;
+
+        const isCurrentlyLikedInStore = state.likedPosts.includes(post.id);
+        if (likeSnap.exists()) {
+          if (!isCurrentlyLikedInStore) {
+            state.likedPosts.push(post.id);
+            changed = true;
+          }
+        } else {
+          if (isCurrentlyLikedInStore) {
+            const index = state.likedPosts.indexOf(post.id);
+            state.likedPosts.splice(index, 1);
+            changed = true;
+          }
+        }
+
+        // Fetch vote interaction
+        const voteRef = doc(db, 'interactions', `${post.id}_${deviceImei}_vote`);
+        const voteSnap = await getDoc(voteRef);
+        if (!active) return;
+        
+        const currentVoteInStore = state.votedPosts[post.id];
+        if (voteSnap.exists()) {
+          const voteData = voteSnap.data();
+          if (currentVoteInStore !== voteData.direction) {
+            state.votedPosts[post.id] = voteData.direction;
+            changed = true;
+          }
+        } else {
+          if (currentVoteInStore) {
+            delete state.votedPosts[post.id];
+            changed = true;
+          }
+        }
+
+        // Fetch poll interaction
+        const pollRef = doc(db, 'interactions', `${post.id}_${deviceImei}_poll`);
+        const pollSnap = await getDoc(pollRef);
+        if (!active) return;
+        
+        const currentPollInStore = state.votedPolls[post.id];
+        if (pollSnap.exists()) {
+          const pollData = pollSnap.data();
+          if (currentPollInStore !== pollData.optionIndex) {
+            state.votedPolls[post.id] = pollData.optionIndex;
+            changed = true;
+          }
+        }
+
+        // Fetch reaction interaction
+        const reactionRef = doc(db, 'interactions', `${post.id}_${deviceImei}_reaction`);
+        const reactionSnap = await getDoc(reactionRef);
+        if (!active) return;
+        
+        const currentReactionInStore = state.reactedPosts ? state.reactedPosts[post.id] : null;
+        if (reactionSnap.exists()) {
+          const reactionData = reactionSnap.data();
+          if (currentReactionInStore !== reactionData.reactionKey) {
+            if (!state.reactedPosts) state.reactedPosts = {};
+            state.reactedPosts[post.id] = reactionData.reactionKey;
+            setActiveReaction(reactionData.reactionKey);
+            changed = true;
+          }
+        } else {
+          if (currentReactionInStore) {
+            if (state.reactedPosts) {
+              delete state.reactedPosts[post.id];
+            }
+            setActiveReaction(null);
+            changed = true;
+          }
+        }
+
+        if (changed) {
+          saveInteractionState(state);
+          // Trigger local state update to re-render component
+          setDummyTrigger(prev => prev + 1);
+        }
+      } catch (err) {
+        console.error('Failed to sync interactions from Firestore:', err);
+      }
+    };
+
+    syncInteractions();
+    return () => {
+      active = false;
+    };
   }, [post.id]);
 
   // Read interaction states from LocalStorage via storage helpers
@@ -127,12 +230,6 @@ export default function VenomCard({
     setIsLiking(true);
 
     const isLikedNow = togglePostLikeStore(post.id);
-    const incAmount = isLikedNow ? 1 : -1;
-
-    // Instantly notify parent for visual response
-    if (onPostUpdate) {
-      onPostUpdate({ likesCount: Math.max(0, post.likesCount + incAmount) });
-    }
 
     try {
       const userIp = await getClientIp();
@@ -140,20 +237,41 @@ export default function VenomCard({
       const interactionRef = doc(db, 'interactions', `${post.id}_${deviceImei}_like`);
       const postRef = doc(db, 'posts', post.id);
 
-      if (isLikedNow) {
-        await setDoc(interactionRef, {
-          ip: userIp,
-          imei: deviceImei,
-          postId: post.id,
-          type: 'like',
-          createdAt: new Date().toISOString()
-        });
-      } else {
-        await deleteDoc(interactionRef);
-      }
+      await runTransaction(db, async (transaction) => {
+        const likeSnap = await transaction.get(interactionRef);
+        const postSnap = await transaction.get(postRef);
 
-      await updateDoc(postRef, {
-        likesCount: increment(incAmount),
+        if (!postSnap.exists()) return;
+        const currentPostData = postSnap.data();
+        const existingLikes = currentPostData.likesCount || 0;
+
+        if (isLikedNow) {
+          if (!likeSnap.exists()) {
+            transaction.set(interactionRef, {
+              ip: userIp,
+              imei: deviceImei,
+              postId: post.id,
+              type: 'like',
+              createdAt: new Date().toISOString()
+            });
+            transaction.update(postRef, {
+              likesCount: existingLikes + 1
+            });
+            if (onPostUpdate) {
+              onPostUpdate({ likesCount: existingLikes + 1 });
+            }
+          }
+        } else {
+          if (likeSnap.exists()) {
+            transaction.delete(interactionRef);
+            transaction.update(postRef, {
+              likesCount: Math.max(0, existingLikes - 1)
+            });
+            if (onPostUpdate) {
+              onPostUpdate({ likesCount: Math.max(0, existingLikes - 1) });
+            }
+          }
+        }
       });
     } catch (error) {
       // Revert state on error
@@ -175,60 +293,77 @@ export default function VenomCard({
     if (isVoting) return;
     setIsVoting(true);
 
-    let upvoteInc = 0;
-    let downvoteInc = 0;
-
-    if (userVote === direction) {
-      // Cancel current vote
-      if (direction === 'up') upvoteInc = -1;
-      else downvoteInc = -1;
-      setPostVoteStore(post.id, null);
-    } else {
-      // Set new vote or switch vote
-      if (direction === 'up') {
-        upvoteInc = 1;
-        if (userVote === 'down') downvoteInc = -1;
-      } else {
-        downvoteInc = 1;
-        if (userVote === 'up') upvoteInc = -1;
-      }
-      setPostVoteStore(post.id, direction);
-    }
-
-    // Instantly notify parent for optimistic update
-    if (onPostUpdate) {
-      onPostUpdate({
-        upvotesCount: Math.max(0, post.upvotesCount + upvoteInc),
-        downvotesCount: Math.max(0, post.downvotesCount + downvoteInc),
-      });
-    }
-
     try {
       const userIp = await getClientIp();
       const deviceImei = getDeviceImei();
       const interactionRef = doc(db, 'interactions', `${post.id}_${deviceImei}_vote`);
       const postRef = doc(db, 'posts', post.id);
 
-      if (userVote === direction) {
-        // Vote was cancelled
-        await deleteDoc(interactionRef);
-      } else {
-        // Set new/switched vote
-        await setDoc(interactionRef, {
-          ip: userIp,
-          imei: deviceImei,
-          postId: post.id,
-          type: 'vote',
-          direction,
-          createdAt: new Date().toISOString()
+      await runTransaction(db, async (transaction) => {
+        const voteSnap = await transaction.get(interactionRef);
+        const postSnap = await transaction.get(postRef);
+
+        if (!postSnap.exists()) return;
+        const currentPostData = postSnap.data();
+        let currentUp = currentPostData.upvotesCount || 0;
+        let currentDown = currentPostData.downvotesCount || 0;
+
+        if (userVote === direction) {
+          // Cancel vote
+          if (voteSnap.exists()) {
+            transaction.delete(interactionRef);
+            if (direction === 'up') currentUp = Math.max(0, currentUp - 1);
+            else currentDown = Math.max(0, currentDown - 1);
+          }
+          setPostVoteStore(post.id, null);
+        } else {
+          // Switch or set vote
+          if (voteSnap.exists()) {
+            const oldVote = voteSnap.data().direction;
+            if (oldVote !== direction) {
+              if (direction === 'up') {
+                currentUp += 1;
+                currentDown = Math.max(0, currentDown - 1);
+              } else {
+                currentDown += 1;
+                currentUp = Math.max(0, currentUp - 1);
+              }
+              transaction.set(interactionRef, {
+                ip: userIp,
+                imei: deviceImei,
+                postId: post.id,
+                type: 'vote',
+                direction,
+                createdAt: new Date().toISOString()
+              });
+            }
+          } else {
+            if (direction === 'up') currentUp += 1;
+            else currentDown += 1;
+            transaction.set(interactionRef, {
+              ip: userIp,
+              imei: deviceImei,
+              postId: post.id,
+              type: 'vote',
+              direction,
+              createdAt: new Date().toISOString()
+            });
+          }
+          setPostVoteStore(post.id, direction);
+        }
+
+        transaction.update(postRef, {
+          upvotesCount: currentUp,
+          downvotesCount: currentDown
         });
-      }
 
-      const updateData: { [key: string]: any } = {};
-      if (upvoteInc !== 0) updateData.upvotesCount = increment(upvoteInc);
-      if (downvoteInc !== 0) updateData.downvotesCount = increment(downvoteInc);
-
-      await updateDoc(postRef, updateData);
+        if (onPostUpdate) {
+          onPostUpdate({
+            upvotesCount: currentUp,
+            downvotesCount: currentDown
+          });
+        }
+      });
     } catch (error) {
       // Revert store state & visual on error
       setPostVoteStore(post.id, userVote);
@@ -254,31 +389,37 @@ export default function VenomCard({
 
     setPollVotedOptionStore(post.id, optionIndex);
 
-    // Optimistically update parent
-    const updatedPollVotes = { ...pollVotes };
-    updatedPollVotes[optionIndex] = (updatedPollVotes[optionIndex] || 0) + 1;
-    if (onPostUpdate) {
-      onPostUpdate({ pollVotes: updatedPollVotes });
-    }
-
     try {
       const userIp = await getClientIp();
       const deviceImei = getDeviceImei();
       const interactionRef = doc(db, 'interactions', `${post.id}_${deviceImei}_poll`);
       const postRef = doc(db, 'posts', post.id);
 
-      await setDoc(interactionRef, {
-        ip: userIp,
-        imei: deviceImei,
-        postId: post.id,
-        type: 'poll',
-        optionIndex,
-        createdAt: new Date().toISOString()
-      });
+      await runTransaction(db, async (transaction) => {
+        const pollSnap = await transaction.get(interactionRef);
+        const postSnap = await transaction.get(postRef);
 
-      const voteKey = `pollVotes.${optionIndex}`;
-      await updateDoc(postRef, {
-        [voteKey]: increment(1),
+        if (!postSnap.exists()) return;
+        const currentPostData = postSnap.data();
+        const currentVotes = { ...(currentPostData.pollVotes || {}) };
+
+        if (!pollSnap.exists()) {
+          transaction.set(interactionRef, {
+            ip: userIp,
+            imei: deviceImei,
+            postId: post.id,
+            type: 'poll',
+            optionIndex,
+            createdAt: new Date().toISOString()
+          });
+          currentVotes[optionIndex] = (currentVotes[optionIndex] || 0) + 1;
+          transaction.update(postRef, {
+            pollVotes: currentVotes
+          });
+          if (onPostUpdate) {
+            onPostUpdate({ pollVotes: currentVotes });
+          }
+        }
       });
     } catch (error) {
       // Revert on error
@@ -410,26 +551,14 @@ Use it now: https://myvenom.vercel.app`;
     const isRemove = oldReaction === reactionKey;
     const nextReaction = isRemove ? null : reactionKey;
 
-    // Calculate optimistic reactions
-    const currentReactions = { ...(post.reactions || {}) };
-    
-    // Decrement old
-    if (oldReaction) {
-      currentReactions[oldReaction] = Math.max(0, (currentReactions[oldReaction] || 0) - 1);
-    }
-    // Increment new
+    // Trigger floating emojis optimistically
     if (nextReaction) {
-      currentReactions[nextReaction] = (currentReactions[nextReaction] || 0) + 1;
       const emoji = REACTIONS.find(r => r.key === nextReaction)?.emoji || '❤️';
       spawnFloatingEmojis(emoji);
     }
 
     setActiveReaction(nextReaction);
     setPostReactionStore(post.id, nextReaction);
-    if (onPostUpdate) {
-      onPostUpdate({ reactions: currentReactions });
-    }
-
     setShowMobileReactions(false);
 
     try {
@@ -438,29 +567,44 @@ Use it now: https://myvenom.vercel.app`;
       const interactionRef = doc(db, 'interactions', `${post.id}_${deviceImei}_reaction`);
       const postRef = doc(db, 'posts', post.id);
 
-      if (isRemove) {
-        await deleteDoc(interactionRef);
-        await updateDoc(postRef, {
-          [`reactions.${reactionKey}`]: increment(-1),
-        });
-      } else {
-        await setDoc(interactionRef, {
-          ip: userIp,
-          imei: deviceImei,
-          postId: post.id,
-          type: 'reaction',
-          reactionKey,
-          createdAt: new Date().toISOString()
-        });
+      await runTransaction(db, async (transaction) => {
+        const reactionSnap = await transaction.get(interactionRef);
+        const postSnap = await transaction.get(postRef);
 
-        const updateData: { [key: string]: any } = {};
-        if (oldReaction) {
-          updateData[`reactions.${oldReaction}`] = increment(-1);
+        if (!postSnap.exists()) return;
+        const currentPostData = postSnap.data();
+        const currentReactions = { ...(currentPostData.reactions || {}) };
+
+        if (isRemove) {
+          if (reactionSnap.exists()) {
+            transaction.delete(interactionRef);
+            currentReactions[reactionKey] = Math.max(0, (currentReactions[reactionKey] || 0) - 1);
+          }
+        } else {
+          // Add or switch reaction
+          transaction.set(interactionRef, {
+            ip: userIp,
+            imei: deviceImei,
+            postId: post.id,
+            type: 'reaction',
+            reactionKey,
+            createdAt: new Date().toISOString()
+          });
+          
+          if (oldReaction) {
+            currentReactions[oldReaction] = Math.max(0, (currentReactions[oldReaction] || 0) - 1);
+          }
+          currentReactions[reactionKey] = (currentReactions[reactionKey] || 0) + 1;
         }
-        updateData[`reactions.${reactionKey}`] = increment(1);
 
-        await updateDoc(postRef, updateData);
-      }
+        transaction.update(postRef, {
+          reactions: currentReactions
+        });
+
+        if (onPostUpdate) {
+          onPostUpdate({ reactions: currentReactions });
+        }
+      });
     } catch (error) {
       console.error('Failed to update reaction:', error);
       setActiveReaction(oldReaction);

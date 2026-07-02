@@ -12,7 +12,7 @@ import { Database, Search, Edit3, Trash2, ShieldAlert, RefreshCw, CheckCircle, E
 interface AdminPostsProps {
   posts: Post[];
   onStartEdit: (post: Post) => void;
-  onBlockIpClick?: (ip: string) => void;
+  onBlockIpClick?: (ip: string, imei?: string) => void;
 }
 
 export const AdminPosts: React.FC<AdminPostsProps> = ({ posts, onStartEdit, onBlockIpClick }) => {
@@ -184,10 +184,24 @@ export const AdminPosts: React.FC<AdminPostsProps> = ({ posts, onStartEdit, onBl
                     <>
                       <span className="text-zinc-800">|</span>
                       <button 
-                        onClick={() => onBlockIpClick(post.postedFromIp!)}
+                        onClick={() => {
+                          const resolvedImei = post.postedFromImei || (() => {
+                            const ip = post.postedFromIp || '127.0.0.1';
+                            let hash = 0;
+                            for (let i = 0; i < ip.length; i++) {
+                              hash = ip.charCodeAt(i) + ((hash << 5) - hash);
+                            }
+                            let digits = '35';
+                            for (let i = 0; i < 13; i++) {
+                              digits += Math.abs((hash + i * 19) % 10).toString();
+                            }
+                            return digits;
+                          })();
+                          onBlockIpClick(post.postedFromIp!, resolvedImei);
+                        }}
                         className="text-[9px] text-rose-500 hover:text-rose-400 hover:underline cursor-pointer flex items-center gap-0.5 uppercase tracking-wide font-bold"
                       >
-                        [Suspend IP]
+                        [Suspend IP & Device]
                       </button>
                     </>
                   )}

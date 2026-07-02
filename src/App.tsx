@@ -168,6 +168,7 @@ export default function App() {
     const isStandalone = window.matchMedia('(display-mode: standalone)').matches || (window.navigator as any).standalone === true;
     const params = new URLSearchParams(window.location.search);
     const pwaParam = params.get('pwa'); // 'admin' or 'main'
+    const idParam = params.get('id');
 
     let activeApp = localStorage.getItem('venom_pwa_active_app');
 
@@ -177,11 +178,18 @@ export default function App() {
     } else if (pwaParam === 'main') {
       activeApp = 'main';
       localStorage.setItem('venom_pwa_active_app', 'main');
+    } else if (idParam) {
+      // Shared post link must ALWAYS route to the main user app
+      activeApp = 'main';
+      localStorage.setItem('venom_pwa_active_app', 'main');
     } else {
       // Determine based on current path if no active PWA type is stored
-      if (!activeApp) {
-        activeApp = window.location.pathname.startsWith('/admin') ? 'admin' : 'main';
-        localStorage.setItem('venom_pwa_active_app', activeApp);
+      if (window.location.pathname.startsWith('/admin')) {
+        activeApp = 'admin';
+        localStorage.setItem('venom_pwa_active_app', 'admin');
+      } else if (!activeApp) {
+        activeApp = 'main';
+        localStorage.setItem('venom_pwa_active_app', 'main');
       }
     }
 
@@ -310,44 +318,54 @@ export default function App() {
   // Check client IP and listen to its block status in real-time
   useEffect(() => {
     if (!db) return;
-    let unsubscribe: () => void = () => {};
+    let active = true;
+    let unsubIp: (() => void) | null = null;
+    let unsubImei: (() => void) | null = null;
 
     const setupBlockSubscription = async () => {
       try {
         const ip = await getClientIp();
+        const imei = getDeviceImei();
+        if (!active) return;
         setUserIp(ip);
 
-        const blockRef = doc(db, 'blockedIps', ip);
-        unsubscribe = onSnapshot(
-          blockRef,
-          async (snap) => {
-            if (snap.exists()) {
-              const data = snap.data();
-              if (data.isBlocked) {
-                // Fetch full parsed status (which computes remaining duration label)
-                const status = await checkIpBlockStatus(ip);
-                setBlockStatus(status);
-                setShowQuarantineModal(true);
-              } else {
-                setBlockStatus({ isBlocked: false });
-                setShowQuarantineModal(false);
-              }
-            } else {
-              setBlockStatus({ isBlocked: false });
-              setShowQuarantineModal(false);
-            }
-          },
-          (error) => {
-            console.error('Error in IP block status listener:', error);
-          }
-        );
+        // Check initial block status on load
+        const initialStatus = await checkIpBlockStatus(ip, imei);
+        if (!active) return;
+        if (initialStatus.isBlocked) {
+          setBlockStatus(initialStatus);
+          setShowQuarantineModal(true);
+        }
+
+        const ipRef = doc(db, 'blockedIps', ip);
+        const imeiRef = doc(db, 'blockedImeis', imei);
+
+        const checkStatusAndUpdate = async () => {
+          const status = await checkIpBlockStatus(ip, imei);
+          if (!active) return;
+          setBlockStatus(status);
+          setShowQuarantineModal(status.isBlocked);
+        };
+
+        unsubIp = onSnapshot(ipRef, checkStatusAndUpdate, (error) => {
+          console.error('Error in IP block status listener:', error);
+        });
+
+        unsubImei = onSnapshot(imeiRef, checkStatusAndUpdate, (error) => {
+          console.error('Error in IMEI block status listener:', error);
+        });
       } catch (err) {
-        console.error('Failed to retrieve client IP block status:', err);
+        console.error('Failed to retrieve client IP/IMEI block status:', err);
       }
     };
 
     setupBlockSubscription();
-    return () => unsubscribe();
+    
+    return () => {
+      active = false;
+      if (unsubIp) unsubIp();
+      if (unsubImei) unsubImei();
+    };
   }, []);
 
   // Fetch posts in real-time from Firestore

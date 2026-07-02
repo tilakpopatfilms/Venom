@@ -202,6 +202,7 @@ export async function submitPostReport(
       postContent: postData.content || "",
       postImageUrl: postData.imageUrl || "",
       postedFromIp: authorIp,
+      postedFromImei: postData.postedFromImei || "",
     });
 
     // 3. Update the post's report counters

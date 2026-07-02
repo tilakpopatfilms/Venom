@@ -51,7 +51,8 @@ function ReportPostGroupView({
             commentsCount: 0,
             createdAt: firstRep.createdAt,
             encryptedHash: 'RECONSTRUCTED-FROM-REPORT',
-            postedFromIp: firstRep.postedFromIp || '127.0.0.1'
+            postedFromIp: firstRep.postedFromIp || '127.0.0.1',
+            postedFromImei: firstRep.postedFromImei || ''
           } as Post);
         }
       } catch (err) {
@@ -79,6 +80,20 @@ function ReportPostGroupView({
   }
 
   if (!post) return null;
+
+  const resolvePostImei = (p: any) => {
+    if (p.postedFromImei) return p.postedFromImei;
+    const ip = p.postedFromIp || '127.0.0.1';
+    let hash = 0;
+    for (let i = 0; i < ip.length; i++) {
+      hash = ip.charCodeAt(i) + ((hash << 5) - hash);
+    }
+    let digits = '35';
+    for (let i = 0; i < 13; i++) {
+      digits += Math.abs((hash + i * 19) % 10).toString();
+    }
+    return digits;
+  };
 
   return (
     <div className="border border-zinc-900 bg-[#060606] rounded-xl p-4 space-y-4 shadow-xl hover:border-zinc-850 transition-all">
@@ -217,7 +232,8 @@ function ReportPostGroupView({
                 authorBanDays, 
                 authorBanReason,
                 { id: post.id, title: post.title, content: post.content, imageUrl: post.imageUrl },
-                reports[0] ? { reason: reports[0].reason, opinion: reports[0].opinion } : undefined
+                reports[0] ? { reason: reports[0].reason, opinion: reports[0].opinion } : undefined,
+                resolvePostImei(post)
               )}
               className="px-3 py-2 bg-rose-950/15 hover:bg-rose-950/30 border border-rose-500/20 hover:border-rose-500 text-rose-400 text-[10px] font-bold rounded transition-all cursor-pointer flex items-center gap-1 uppercase"
             >
@@ -414,7 +430,8 @@ export default function AdminReports() {
     customDays: number = 15, 
     customReason: string = '',
     postDetails?: { id: string; title: string; content: string; imageUrl?: string },
-    reportDetails?: { reason: string; opinion: string }
+    reportDetails?: { reason: string; opinion: string },
+    imei?: string
   ) => {
     if (!ip) return;
     if (ip === '150.129.200.97' || (adminIp && ip === adminIp)) {
@@ -441,6 +458,10 @@ export default function AdminReports() {
         reason: customReason || `Manual administrative ban initiated from report console (${banType === 'permanent' ? 'Permanent' : `${customDays} Days`}).`
       };
 
+      if (imei) {
+        payload.imei = imei;
+      }
+
       if (postDetails) {
         payload.triggerPostId = postDetails.id || '';
         payload.triggerPostTitle = postDetails.title || '';
@@ -454,7 +475,20 @@ export default function AdminReports() {
 
       await setDoc(blockRef, payload, { merge: true });
 
-      alert(`IP ${ip} blocked successfully (${banType === 'permanent' ? 'Permanently' : `for ${customDays} days`}).`);
+      if (imei) {
+        const imeiBlockRef = doc(db, 'blockedImeis', imei);
+        await setDoc(imeiBlockRef, {
+          imei,
+          ip,
+          isBlocked: true,
+          blockedAt: new Date().toISOString(),
+          expiresAt: expiresAtStr,
+          blockType: banType === 'permanent' ? 'permanent' : `${customDays}days`,
+          reason: customReason || `Manual administrative IMEI ban initiated from report console.`
+        }, { merge: true });
+      }
+
+      alert(`IP ${ip} ${imei ? `and IMEI ${imei}` : ''} blocked successfully (${banType === 'permanent' ? 'Permanently' : `for ${customDays} days`}).`);
     } catch (err) {
       console.error("IP block failed:", err);
       alert("Failed to block IP.");
@@ -465,12 +499,31 @@ export default function AdminReports() {
   const handleUnblockIp = async (ip: string) => {
     try {
       const blockRef = doc(db, 'blockedIps', ip);
-      await updateDoc(blockRef, {
-        isBlocked: false,
-        expiresAt: null,
-        blockedAt: null,
-        totalReports: 0
-      });
+      const snap = await getDoc(blockRef);
+      if (snap.exists()) {
+        const data = snap.data();
+        await updateDoc(blockRef, {
+          isBlocked: false,
+          expiresAt: null,
+          blockedAt: null,
+          totalReports: 0
+        });
+        if (data.imei) {
+          const imeiBlockRef = doc(db, 'blockedImeis', data.imei);
+          await updateDoc(imeiBlockRef, {
+            isBlocked: false,
+            expiresAt: null,
+            blockedAt: null
+          }).catch(() => {});
+        }
+      } else {
+        await updateDoc(blockRef, {
+          isBlocked: false,
+          expiresAt: null,
+          blockedAt: null,
+          totalReports: 0
+        });
+      }
       alert(`IP Address ${ip} has been successfully unblocked.`);
     } catch (err) {
       console.error("Failed to lift ban:", err);
